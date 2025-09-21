@@ -354,6 +354,15 @@ def show_main_app():
                 
         else:
             st.error("Please upload resume and add job description")
+    
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: #666; padding: 1rem;'>"
+        "Created by <strong>Syed Ali Hashmi</strong> 🚀"
+        "</div>", 
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
