@@ -1,564 +1,359 @@
-import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-import pandas as pd
-from utils import ResumeAnalyzer, CoverLetterGenerator, ReportGenerator, UIHelpers
-from config import *
+"""
+AI Resume Analyzer - Streamlit Cloud Compatible Version
+Works without external AI APIs for basic functionality
+"""
 
-# Page configuration
+import streamlit as st
+import sqlite3
+import hashlib
+import json
+from datetime import datetime
+import pdfplumber
+import docx2txt
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import plotly.graph_objects as go
+import pandas as pd
+from fpdf import FPDF
+import io
+
+# Page config
 st.set_page_config(
-    page_title=APP_TITLE,
-    page_icon=APP_ICON,
-    layout=LAYOUT,
-    initial_sidebar_state="expanded"
+    page_title="AI Resume Analyzer",
+    page_icon="🎯",
+    layout="wide"
 )
 
-# Custom CSS for better UI
+# Custom CSS
 st.markdown("""
 <style>
     .main-header {
-        font-size: 3rem;
-        color: #1f77b4;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        color: white;
         text-align: center;
         margin-bottom: 2rem;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: bold;
     }
-    
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 15px;
+        padding: 1rem;
+        border-radius: 10px;
         color: white;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        margin: 0.5rem 0;
-    }
-    
-    .skill-match {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
-        margin: 0.3rem;
-        display: inline-block;
-        font-weight: 500;
-        border: 1px solid #c3e6cb;
-    }
-    
-    .skill-missing {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
-        margin: 0.3rem;
-        display: inline-block;
-        font-weight: 500;
-        border: 1px solid #f5c6cb;
-    }
-    
-    .info-box {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #2196f3;
-        margin: 1rem 0;
-    }
-    
-    .success-box {
-        background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #4caf50;
-        margin: 1rem 0;
-    }
-    
-    .warning-box {
-        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #ff9800;
-        margin: 1rem 0;
-    }
-    
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 0.5rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
 </style>
 """, unsafe_allow_html=True)
 
+# Database functions
+def init_database():
+    conn = sqlite3.connect('resumeai.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            username TEXT UNIQUE,
+            email TEXT UNIQUE,
+            password TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER,
+            resume_text TEXT,
+            jd_text TEXT,
+            match_score REAL,
+            ats_score REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+init_database()
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user(username, email, password):
+    conn = sqlite3.connect('resumeai.db')
+    cursor = conn.cursor()
+    
+    try:
+        hashed_pw = hash_password(password)
+        cursor.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+                      (username, email, hashed_pw))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
+
+def authenticate_user(username, password):
+    conn = sqlite3.connect('resumeai.db')
+    cursor = conn.cursor()
+    
+    hashed_pw = hash_password(password)
+    cursor.execute('SELECT id, username, email FROM users WHERE username = ? AND password = ?',
+                  (username, hashed_pw))
+    user = cursor.fetchone()
+    conn.close()
+    
+    return user
+
+def save_session(user_id, resume_text, jd_text, match_score, ats_score):
+    conn = sqlite3.connect('resumeai.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''INSERT INTO sessions 
+                     (user_id, resume_text, jd_text, match_score, ats_score)
+                     VALUES (?, ?, ?, ?, ?)''',
+                  (user_id, resume_text, jd_text, match_score, ats_score))
+    conn.commit()
+    conn.close()
+
+# Core functions
+def extract_text_from_pdf(uploaded_file):
+    text = ""
+    with pdfplumber.open(uploaded_file) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+    return text
+
+def extract_text_from_docx(uploaded_file):
+    return docx2txt.process(uploaded_file)
+
+def clean_text(text):
+    if not text:
+        return ""
+    text = text.lower()
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'[^\w\s.,;:!?()-]', ' ', text)
+    return text.strip()
+
+def calculate_match_score(resume_text, jd_text):
+    if not resume_text or not jd_text:
+        return 0
+    
+    clean_resume = clean_text(resume_text)
+    clean_jd = clean_text(jd_text)
+    
+    vectorizer = TfidfVectorizer(stop_words='english', max_features=1000)
+    
+    try:
+        tfidf_matrix = vectorizer.fit_transform([clean_resume, clean_jd])
+        similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])
+        return round(similarity[0][0] * 100, 1)
+    except:
+        return 0
+
+def calculate_ats_score(resume_text, jd_text):
+    if not resume_text or not jd_text:
+        return 0
+    
+    jd_words = set(clean_text(jd_text).split())
+    resume_words = set(clean_text(resume_text).split())
+    
+    overlap = len(jd_words & resume_words)
+    total_jd_words = len(jd_words)
+    
+    if total_jd_words == 0:
+        return 0
+    
+    ats_score = (overlap / total_jd_words) * 100
+    
+    action_verbs = ['managed', 'led', 'developed', 'created', 'improved', 'achieved']
+    action_count = sum(1 for verb in action_verbs if verb in resume_text.lower())
+    ats_score += min(action_count * 5, 20)
+    
+    return min(round(ats_score, 1), 100)
+
 def main():
     # Initialize session state
-    if 'analysis_results' not in st.session_state:
-        st.session_state.analysis_results = None
-    if 'cover_letter' not in st.session_state:
-        st.session_state.cover_letter = None
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'user_data' not in st.session_state:
+        st.session_state.user_data = None
     
     # Header
-    st.markdown(f'<h1 class="main-header">{APP_ICON} {APP_TITLE}</h1>', unsafe_allow_html=True)
-    
-    # Subtitle with animation
     st.markdown("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <h3 style="color: #666; font-weight: 300;">
-            🚀 Optimize your resume • 🎯 Match job requirements • 🤖 Generate AI cover letters
-        </h3>
+    <div class="main-header">
+        <h1>🎯 AI Resume Analyzer</h1>
+        <p>Professional Resume Analysis & Optimization</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Sidebar configuration
+    # Authentication
+    if not st.session_state.authenticated:
+        show_auth_page()
+        return
+    
+    # Main application
+    show_main_app()
+
+def show_auth_page():
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.markdown("### Welcome to AI Resume Analyzer")
+        
+        tab1, tab2 = st.tabs(["Sign In", "Sign Up"])
+        
+        with tab1:
+            with st.form("login_form"):
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                
+                if st.form_submit_button("Sign In", use_container_width=True):
+                    user = authenticate_user(username, password)
+                    if user:
+                        st.session_state.authenticated = True
+                        st.session_state.user_data = {
+                            'id': user[0],
+                            'username': user[1],
+                            'email': user[2]
+                        }
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials")
+        
+        with tab2:
+            with st.form("signup_form"):
+                new_username = st.text_input("Choose Username")
+                new_email = st.text_input("Email")
+                new_password = st.text_input("Password", type="password")
+                confirm_password = st.text_input("Confirm Password", type="password")
+                
+                if st.form_submit_button("Sign Up", use_container_width=True):
+                    if new_password != confirm_password:
+                        st.error("Passwords don't match")
+                    elif len(new_password) < 6:
+                        st.error("Password must be at least 6 characters")
+                    elif create_user(new_username, new_email, new_password):
+                        st.success("Account created! Please sign in.")
+                    else:
+                        st.error("Username or email already exists")
+
+def show_main_app():
+    # Sidebar
     with st.sidebar:
-        st.header("⚙️ Configuration")
+        st.markdown(f"### Welcome, {st.session_state.user_data['username']}!")
         
-        # API Key input
-        api_key = st.text_input(
-            "🔑 OpenAI API Key", 
-            type="password",
-            help="Required for AI cover letter generation"
-        )
-        
-        if api_key:
-            st.success("✅ API Key configured")
-        else:
-            st.info("💡 Add API key to enable cover letter generation")
+        if st.button("🚪 Logout"):
+            st.session_state.authenticated = False
+            st.session_state.user_data = None
+            st.rerun()
         
         st.divider()
-        
-        # Analysis options
-        st.header("📊 Analysis Options")
-        show_wordcloud = st.checkbox("Show Word Clouds", value=True)
-        show_keywords = st.checkbox("Show Top Keywords", value=True)
-        show_detailed_analysis = st.checkbox("Show Detailed Analysis", value=True)
-        
-        st.divider()
-        
-        # Additional inputs for cover letter
-        st.header("📝 Cover Letter Details")
-        company_name = st.text_input("Company Name (Optional)")
-        position_title = st.text_input("Position Title (Optional)")
-        
-        st.divider()
-        
-        # Tips
-        st.header("💡 Tips")
-        st.info("""
-        **For best results:**
-        - Use recent resume versions
-        - Include complete job descriptions
-        - Ensure files are text-readable
-        - Add specific company details
-        """)
+        st.info("🎯 Upload your resume and job description to get instant analysis!")
     
-    # Main content area
-    col1, col2 = st.columns([1, 1], gap="large")
+    # Main content
+    st.header("📊 Resume Analysis Dashboard")
     
-    # Resume upload section
+    col1, col2 = st.columns([1, 1])
+    
     with col1:
-        st.markdown("""
-        <div class="info-box">
-            <h3>📄 Step 1: Upload Your Resume</h3>
-            <p>Upload your resume in PDF or DOCX format for analysis</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        resume_file = st.file_uploader(
-            "Choose your resume file",
-            type=SUPPORTED_RESUME_FORMATS,
-            help=f"Supported formats: {', '.join(SUPPORTED_RESUME_FORMATS).upper()}"
-        )
+        st.subheader("📄 Upload Resume")
+        resume_file = st.file_uploader("Choose resume file", type=['pdf', 'docx'])
         
         if resume_file:
-            st.markdown("""
-            <div class="success-box">
-                ✅ <strong>Resume uploaded successfully!</strong><br>
-                Ready for analysis
-            </div>
-            """, unsafe_allow_html=True)
+            if resume_file.type == "application/pdf":
+                resume_text = extract_text_from_pdf(resume_file)
+            else:
+                resume_text = extract_text_from_docx(resume_file)
             
-            # Show file details
-            st.caption(f"📁 {resume_file.name} ({resume_file.size} bytes)")
+            st.session_state.resume_text = resume_text
+            st.success(f"✅ {resume_file.name} uploaded")
     
-    # Job description section
     with col2:
-        st.markdown("""
-        <div class="info-box">
-            <h3>📋 Step 2: Add Job Description</h3>
-            <p>Paste the job description or upload a file</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.subheader("📋 Job Description")
+        jd_input = st.text_area("Paste job description:", height=200)
         
-        # Input method selection
-        input_method = st.radio(
-            "Choose input method:",
-            ["📝 Paste Text", "📁 Upload File"],
-            horizontal=True
-        )
-        
-        jd_text = ""
-        
-        if input_method == "📝 Paste Text":
-            jd_text = st.text_area(
-                "Paste job description here:",
-                height=200,
-                placeholder="Paste the complete job description including requirements, responsibilities, and qualifications..."
-            )
-        else:
-            jd_file = st.file_uploader(
-                "Choose job description file",
-                type=SUPPORTED_JD_FORMATS,
-                key="jd_file"
-            )
-            
-            if jd_file:
-                analyzer = ResumeAnalyzer()
-                if jd_file.type == "application/pdf":
-                    jd_text = analyzer.extract_text_from_pdf(jd_file)
-                else:
-                    jd_text = analyzer.extract_text_from_docx(jd_file)
+        if jd_input:
+            st.session_state.jd_text = jd_input
+    
+    # Analysis
+    if st.button("🚀 Analyze Resume", type="primary", use_container_width=True):
+        if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
+            with st.spinner("🔄 Analyzing your resume..."):
+                match_score = calculate_match_score(st.session_state.resume_text, st.session_state.jd_text)
+                ats_score = calculate_ats_score(st.session_state.resume_text, st.session_state.jd_text)
                 
-                st.markdown("""
-                <div class="success-box">
-                    ✅ <strong>Job description uploaded!</strong><br>
-                    Text extracted successfully
+                st.session_state.match_score = match_score
+                st.session_state.ats_score = ats_score
+                
+                # Save session
+                if st.session_state.user_data:
+                    save_session(
+                        st.session_state.user_data['id'],
+                        st.session_state.resume_text,
+                        st.session_state.jd_text,
+                        match_score,
+                        ats_score
+                    )
+            
+            # Display results
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h2>{match_score}%</h2>
+                    <p>Match Score</p>
                 </div>
                 """, unsafe_allow_html=True)
-        
-        if jd_text:
-            st.caption(f"📊 {len(jd_text.split())} words extracted")
-    
-    # Analysis section
-    st.markdown("---")
-    
-    # Center the analyze button
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        analyze_button = st.button(
-            "🚀 Analyze Resume",
-            type="primary",
-            use_container_width=True
-        )
-    
-    # Perform analysis
-    if analyze_button:
-        if resume_file and jd_text.strip():
-            with st.spinner("🔄 Analyzing your resume... This may take a moment."):
-                # Initialize analyzer
-                analyzer = ResumeAnalyzer()
-                
-                # Extract resume text
-                if resume_file.type == "application/pdf":
-                    resume_text = analyzer.extract_text_from_pdf(resume_file)
-                else:
-                    resume_text = analyzer.extract_text_from_docx(resume_file)
-                
-                # Perform analysis
-                analysis_results = analyzer.analyze_resume(resume_text, jd_text)
-                st.session_state.analysis_results = analysis_results
-                
-                # Store texts for cover letter generation
-                st.session_state.resume_text = resume_text
-                st.session_state.jd_text = jd_text
             
-            st.success("✅ Analysis completed successfully!")
-        else:
-            st.error("⚠️ Please upload both resume and job description to proceed")
-    
-    # Display results if analysis is complete
-    if st.session_state.analysis_results:
-        results = st.session_state.analysis_results
-        
-        st.markdown("---")
-        st.header("📊 Analysis Results")
-        
-        # Score interpretation
-        UIHelpers.display_score_interpretation(results['similarity_score'])
-        
-        # Key metrics
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h2>{results['similarity_score']}%</h2>
-                <p>Overall Match</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h2>{len(results['matched_skills'])}</h2>
-                <p>Skills Matched</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h2>{len(results['missing_skills'])}</h2>
-                <p>Skills Missing</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h2>{results['skill_match_rate']}%</h2>
-                <p>Skill Match Rate</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Visualizations
-        st.subheader("📈 Visual Analysis")
-        
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            # Gauge chart for overall score
+            with col2:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h2>{ats_score}%</h2>
+                    <p>ATS Score</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                overall = (match_score + ats_score) / 2
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h2>{overall:.1f}%</h2>
+                    <p>Overall</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Gauge visualization
             fig = go.Figure(go.Indicator(
-                mode="gauge+number+delta",
-                value=results['similarity_score'],
-                domain={'x': [0, 1], 'y': [0, 1]},
+                mode="gauge+number",
+                value=match_score,
                 title={'text': "Resume Match Score"},
-                delta={'reference': 70},
-                gauge={
-                    'axis': {'range': [None, 100]},
-                    'bar': {'color': CHART_COLOR_SCHEME['primary']},
-                    'steps': [
-                        {'range': [0, 40], 'color': "lightgray"},
-                        {'range': [40, 70], 'color': CHART_COLOR_SCHEME['warning']},
-                        {'range': [70, 100], 'color': CHART_COLOR_SCHEME['success']}
-                    ],
-                    'threshold': {
-                        'line': {'color': CHART_COLOR_SCHEME['danger'], 'width': 4},
-                        'thickness': 0.75,
-                        'value': 90
-                    }
-                }
+                gauge={'axis': {'range': [None, 100]},
+                       'bar': {'color': "#667eea"},
+                       'steps': [{'range': [0, 50], 'color': "lightgray"},
+                               {'range': [50, 80], 'color': "yellow"},
+                               {'range': [80, 100], 'color': "green"}]}
             ))
-            fig.update_layout(height=300)
             st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # Skills comparison pie chart
-            skills_data = pd.DataFrame({
-                'Category': ['Matched Skills', 'Missing Skills', 'Extra Skills'],
-                'Count': [
-                    len(results['matched_skills']),
-                    len(results['missing_skills']),
-                    max(0, results['total_resume_skills'] - len(results['matched_skills']))
-                ]
-            })
             
-            fig = px.pie(
-                skills_data, 
-                values='Count', 
-                names='Category',
-                title="Skills Breakdown",
-                color_discrete_sequence=[
-                    CHART_COLOR_SCHEME['success'],
-                    CHART_COLOR_SCHEME['danger'],
-                    CHART_COLOR_SCHEME['info']
-                ]
-            )
-            fig.update_layout(height=300)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Skills analysis
-        st.subheader("🎯 Skills Analysis")
-        
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            st.markdown("### ✅ Matched Skills")
-            if results['matched_skills']:
-                UIHelpers.display_skills_with_styling(results['matched_skills'], "matched")
-            else:
-                st.info("No matching skills found. Consider adding relevant skills to your resume.")
-        
-        with col2:
-            st.markdown("### ❌ Missing Skills")
-            if results['missing_skills']:
-                UIHelpers.display_skills_with_styling(results['missing_skills'], "missing")
-                st.markdown("""
-                <div class="warning-box">
-                    💡 <strong>Recommendation:</strong> Consider adding these skills to your resume or highlighting related experience.
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.success("🎉 All required skills are present in your resume!")
-        
-        # Detailed analysis (optional)
-        if show_detailed_analysis:
-            st.subheader("🔍 Detailed Analysis")
-            
-            # Keywords analysis
-            if show_keywords and results['resume_keywords']:
-                col1, col2 = st.columns([1, 1])
+            # Basic recommendations
+            st.subheader("💡 Recommendations")
+            if match_score < 70:
+                st.warning("Consider adding more relevant keywords from the job description")
+            if ats_score < 70:
+                st.warning("Improve ATS compatibility by using more action verbs and quantifiable achievements")
+            if match_score >= 80 and ats_score >= 80:
+                st.success("Great match! Your resume aligns well with the job requirements")
                 
-                with col1:
-                    st.markdown("#### 📄 Resume Keywords")
-                    keywords_df = pd.DataFrame(
-                        results['resume_keywords'][:10], 
-                        columns=['Keyword', 'Score']
-                    )
-                    st.dataframe(keywords_df, use_container_width=True)
-                
-                with col2:
-                    st.markdown("#### 📋 Job Description Keywords")
-                    jd_keywords_df = pd.DataFrame(
-                        results['jd_keywords'][:10], 
-                        columns=['Keyword', 'Score']
-                    )
-                    st.dataframe(jd_keywords_df, use_container_width=True)
-            
-            # Word clouds
-            if show_wordcloud:
-                st.markdown("#### ☁️ Word Clouds")
-                col1, col2 = st.columns([1, 1])
-                
-                with col1:
-                    if st.session_state.resume_text:
-                        try:
-                            wordcloud = WordCloud(
-                                width=400, 
-                                height=300, 
-                                background_color='white',
-                                colormap='viridis'
-                            ).generate(st.session_state.resume_text)
-                            
-                            fig, ax = plt.subplots(figsize=(8, 6))
-                            ax.imshow(wordcloud, interpolation='bilinear')
-                            ax.axis('off')
-                            ax.set_title('Resume Word Cloud', fontsize=14, fontweight='bold')
-                            st.pyplot(fig)
-                        except:
-                            st.info("Unable to generate word cloud for resume")
-                
-                with col2:
-                    if st.session_state.jd_text:
-                        try:
-                            wordcloud = WordCloud(
-                                width=400, 
-                                height=300, 
-                                background_color='white',
-                                colormap='plasma'
-                            ).generate(st.session_state.jd_text)
-                            
-                            fig, ax = plt.subplots(figsize=(8, 6))
-                            ax.imshow(wordcloud, interpolation='bilinear')
-                            ax.axis('off')
-                            ax.set_title('Job Description Word Cloud', fontsize=14, fontweight='bold')
-                            st.pyplot(fig)
-                        except:
-                            st.info("Unable to generate word cloud for job description")
-        
-        # Cover letter generation
-        st.markdown("---")
-        st.header("📝 AI Cover Letter Generator")
-        
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.markdown("""
-            <div class="info-box">
-                <h4>🤖 Generate Personalized Cover Letter</h4>
-                <p>Our AI will create a tailored cover letter based on your resume and the job description.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            generate_cover_letter = st.button(
-                "✨ Generate Cover Letter",
-                type="secondary",
-                use_container_width=True,
-                disabled=not api_key
-            )
-        
-        if generate_cover_letter and api_key:
-            with st.spinner("🤖 Generating your personalized cover letter..."):
-                generator = CoverLetterGenerator(api_key)
-                cover_letter = generator.generate_cover_letter(
-                    st.session_state.resume_text,
-                    st.session_state.jd_text,
-                    company_name,
-                    position_title
-                )
-                st.session_state.cover_letter = cover_letter
-        
-        # Display cover letter
-        if st.session_state.cover_letter:
-            st.subheader("📄 Generated Cover Letter")
-            
-            # Editable cover letter
-            edited_cover_letter = st.text_area(
-                "Edit your cover letter:",
-                value=st.session_state.cover_letter,
-                height=400,
-                help="You can edit the generated cover letter before downloading"
-            )
-            
-            # Download button
-            st.download_button(
-                label="📥 Download Cover Letter",
-                data=edited_cover_letter,
-                file_name=f"cover_letter_{company_name or 'job_application'}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-        
-        elif not api_key:
-            st.warning("🔑 Please add your OpenAI API key in the sidebar to generate cover letters")
-        
-        # Download report
-        st.markdown("---")
-        st.header("📥 Download Analysis Report")
-        
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.markdown("""
-            <div class="info-box">
-                <h4>📊 Comprehensive Analysis Report</h4>
-                <p>Download a detailed PDF report with all analysis results, recommendations, and insights.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            if st.button("📄 Generate PDF Report", use_container_width=True):
-                with st.spinner("📄 Generating PDF report..."):
-                    report_generator = ReportGenerator()
-                    pdf_data = report_generator.create_pdf_report(
-                        results,
-                        st.session_state.cover_letter or ""
-                    )
-                    
-                    if pdf_data:
-                        st.download_button(
-                            label="📥 Download PDF Report",
-                            data=pdf_data,
-                            file_name=f"resume_analysis_report_{company_name or 'analysis'}.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                        st.success("✅ PDF report generated successfully!")
-                    else:
-                        st.error("❌ Error generating PDF report")
+        else:
+            st.error("Please upload resume and add job description")
 
 if __name__ == "__main__":
     main()
