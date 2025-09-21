@@ -1,0 +1,79 @@
+Senior Full Stack Developer
+Company: InnovateTech Solutions
+Location: San Francisco, CA (Remote Available)
+Employment Type: Full-time
+
+ABOUT THE ROLE
+We are seeking a talented Senior Full Stack Developer to join our growing engineering team. You will be responsible for designing, developing, and maintaining scalable web applications that serve millions of users worldwide. This is an excellent opportunity to work with cutting-edge technologies and make a significant impact on our product.
+
+KEY RESPONSIBILITIES
+• Design and develop full-stack web applications using modern technologies
+• Collaborate with cross-functional teams including product, design, and QA
+• Write clean, maintainable, and well-documented code
+• Participate in code reviews and provide constructive feedback
+• Optimize application performance and ensure scalability
+• Implement automated testing and CI/CD pipelines
+• Mentor junior developers and contribute to team knowledge sharing
+• Stay up-to-date with emerging technologies and industry best practices
+
+REQUIRED QUALIFICATIONS
+• Bachelor's degree in Computer Science, Engineering, or related field
+• 5+ years of professional software development experience
+• Strong proficiency in JavaScript, Python, or Java
+• Experience with modern frontend frameworks (React, Angular, or Vue.js)
+• Solid understanding of backend technologies (Node.js, Django, Spring Boot)
+• Experience with relational and NoSQL databases (PostgreSQL, MongoDB)
+• Knowledge of cloud platforms (AWS, Azure, or Google Cloud)
+• Familiarity with containerization technologies (Docker, Kubernetes)
+• Experience with version control systems (Git)
+• Strong problem-solving and analytical skills
+• Excellent communication and teamwork abilities
+
+PREFERRED QUALIFICATIONS
+• Master's degree in Computer Science or related field
+• Experience with microservices architecture
+• Knowledge of machine learning and data science concepts
+• Familiarity with DevOps practices and tools
+• Experience with agile development methodologies
+• Previous experience in a leadership or mentoring role
+• Contributions to open-source projects
+• Experience with mobile development (React Native, Flutter)
+
+TECHNICAL STACK
+• Frontend: React, TypeScript, HTML5, CSS3, Sass
+• Backend: Node.js, Python, Django, REST APIs, GraphQL
+• Databases: PostgreSQL, MongoDB, Redis
+• Cloud: AWS (EC2, S3, Lambda, RDS), Docker, Kubernetes
+• Tools: Git, Jenkins, Jira, Confluence
+• Testing: Jest, Pytest, Selenium
+
+WHAT WE OFFER
+• Competitive salary range: $120,000 - $180,000
+• Comprehensive health, dental, and vision insurance
+• 401(k) with company matching
+• Flexible work arrangements and remote work options
+• Professional development budget and conference attendance
+• Stock options and equity participation
+• Unlimited PTO policy
+• Modern office with state-of-the-art equipment
+• Team building events and company retreats
+
+COMPANY CULTURE
+At InnovateTech Solutions, we believe in fostering a collaborative and inclusive environment where every team member can thrive. We value innovation, continuous learning, and work-life balance. Our diverse team of talented individuals works together to solve complex problems and deliver exceptional products to our customers.
+
+APPLICATION PROCESS
+Please submit your resume, cover letter, and portfolio showcasing your best work. We review applications on a rolling basis and will contact qualified candidates within 1-2 weeks. The interview process includes:
+
+1. Initial phone/video screening (30 minutes)
+2. Technical assessment and coding challenge
+3. Virtual or on-site interviews with team members
+4. Final interview with hiring manager
+
+We are an equal opportunity employer committed to diversity and inclusion. All qualified applicants will receive consideration for employment without regard to race, color, religion, sex, sexual orientation, gender identity, national origin, disability, or veteran status.
+
+CONTACT INFORMATION
+For questions about this position, please contact:
+Email: careers@innovatetech.com
+Phone: (555) 987-6543
+
+Apply online at: www.innovatetech.com/careers

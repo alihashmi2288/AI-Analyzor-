@@ -1,0 +1,64 @@
+JOHN DOE
+Software Engineer
+Email: john.doe@email.com | Phone: (555) 123-4567
+LinkedIn: linkedin.com/in/johndoe | GitHub: github.com/johndoe
+
+PROFESSIONAL SUMMARY
+Experienced Software Engineer with 5+ years of expertise in full-stack development, specializing in Python, JavaScript, and cloud technologies. Proven track record of delivering scalable web applications and leading cross-functional teams. Passionate about machine learning and data-driven solutions.
+
+TECHNICAL SKILLS
+• Programming Languages: Python, JavaScript, Java, TypeScript, SQL
+• Web Technologies: React, Node.js, HTML5, CSS3, REST APIs
+• Databases: PostgreSQL, MongoDB, Redis
+• Cloud Platforms: AWS (EC2, S3, Lambda), Docker, Kubernetes
+• Tools & Frameworks: Django, Flask, Express.js, Git, Jenkins
+• Data Science: Pandas, NumPy, Scikit-learn, TensorFlow
+
+PROFESSIONAL EXPERIENCE
+
+Senior Software Engineer | TechCorp Inc. | 2021 - Present
+• Led development of microservices architecture serving 100K+ daily active users
+• Implemented CI/CD pipeline reducing deployment time by 60%
+• Mentored 3 junior developers and conducted code reviews
+• Collaborated with product managers to define technical requirements
+• Achieved 99.9% uptime for critical production systems
+
+Software Engineer | StartupXYZ | 2019 - 2021
+• Developed full-stack web applications using React and Python/Django
+• Optimized database queries resulting in 40% performance improvement
+• Integrated third-party APIs and payment processing systems
+• Participated in agile development process and sprint planning
+• Built automated testing suite increasing code coverage to 85%
+
+Junior Developer | WebSolutions LLC | 2018 - 2019
+• Created responsive web interfaces using HTML, CSS, and JavaScript
+• Assisted in backend development using Python and Flask
+• Performed bug fixes and feature enhancements
+• Collaborated with design team to implement UI/UX improvements
+
+EDUCATION
+Bachelor of Science in Computer Science
+State University | 2014 - 2018
+GPA: 3.7/4.0
+
+CERTIFICATIONS
+• AWS Certified Solutions Architect - Associate (2022)
+• Google Cloud Professional Developer (2021)
+• Certified Scrum Master (2020)
+
+PROJECTS
+E-Commerce Platform
+• Built scalable e-commerce platform using React, Node.js, and PostgreSQL
+• Implemented secure payment processing and inventory management
+• Deployed on AWS with auto-scaling capabilities
+
+Machine Learning Recommendation System
+• Developed recommendation engine using Python and TensorFlow
+• Processed 1M+ user interactions to generate personalized recommendations
+• Achieved 25% increase in user engagement metrics
+
+ACHIEVEMENTS
+• Increased team productivity by 30% through process improvements
+• Reduced application load time by 50% through optimization
+• Won "Innovation Award" for developing automated testing framework
+• Published 2 technical articles on company engineering blog
