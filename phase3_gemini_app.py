@@ -215,15 +215,19 @@ def calculate_ats_score(resume_text, jd_text):
 
 # Gemini AI functions
 def get_gemini_api_key():
-    """Get Gemini API key from secrets or built-in"""
+    """Get Gemini API key from secrets"""
     try:
         return st.secrets["GEMINI_API_KEY"]
     except:
-        return "AIzaSyCZm94zQC5KubmjcH1Qo5kXU2mvTIjxOsg"
+        st.error("⚠️ Gemini API key not found in secrets. Please add GEMINI_API_KEY to .streamlit/secrets.toml")
+        return None
 
 def generate_with_gemini(prompt, max_tokens=1000):
-    """Generate content using Gemini AI with built-in key"""
+    """Generate content using Gemini AI"""
     api_key = get_gemini_api_key()
+    
+    if not api_key:
+        return "API key not configured. Please check secrets.toml file."
     
     try:
         genai.configure(api_key=api_key)
