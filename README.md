@@ -1,6 +1,8 @@
 # 🎯 AI Resume Analyzer Pro - Professional Resume Analysis Platform
 
-A comprehensive, enterprise-grade AI-powered resume analyzer that helps job seekers optimize their resumes, generate tailored cover letters, and prepare for interviews with advanced analytics and machine learning.
+**Created by Syed Ali Hashmi** 🚀
+
+A comprehensive, enterprise-grade AI-powered resume analyzer that helps job seekers optimize their resumes, generate tailored cover letters, and prepare for interviews with advanced analytics and machine learning. Now featuring **FREE Google Gemini AI integration** for unlimited content generation.
 
 ## 🌟 Project Overview
 
@@ -8,11 +10,11 @@ This professional Streamlit web application provides:
 - **Advanced Resume Parsing** (PDF/DOCX) with intelligent text extraction
 - **Semantic Job Matching** using TF-IDF and sentence transformers
 - **ATS Score Simulation** with actionable improvement suggestions
-- **AI-Powered Content Generation** for cover letters and resume bullets
-- **Multi-Resume Comparison** and interview question generation
-- **Professional Reports** with branded PDF/DOCX exports
-- **User Authentication** with analysis history tracking
-- **Enterprise Deployment** with Docker and CI/CD
+- **FREE AI-Powered Content Generation** using Google Gemini API
+- **User Authentication** with secure login/signup and session history
+- **Professional Analytics** with interactive dashboards and visualizations
+- **Multi-Format Export** (PDF/DOCX) with branded reports
+- **Streamlit Cloud Deployment** ready with optimized performance
 
 ## 🏗️ Architecture
 
@@ -34,7 +36,7 @@ Backend Modules:
 
 - **Frontend**: Streamlit (>=1.24)
 - **NLP**: spaCy, sentence-transformers, scikit-learn
-- **AI/ML**: OpenAI GPT API, TensorFlow (optional)
+- **AI/ML**: Google Gemini API (FREE), TensorFlow (optional)
 - **Database**: SQLite (dev) / PostgreSQL (prod)
 - **Export**: ReportLab, python-docx
 - **Deployment**: Docker, GitHub Actions, Streamlit Cloud
@@ -74,7 +76,7 @@ ai-resume-analyzer/
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ai-resume-analyzer.git
+git clone https://github.com/syedali/ai-resume-analyzer.git
 cd ai-resume-analyzer
 
 # Create virtual environment
@@ -98,53 +100,60 @@ cp .env.example .env
 # Add OpenAI API key, database URL, etc.
 ```
 
+### 2. Get FREE Gemini API Key
+
+1. Visit: https://makersuite.google.com/app/apikey
+2. Sign in with Google account
+3. Create API key (completely free)
+4. Copy the key for use in the app
+
 ### 3. Run Application
 
 ```bash
-# Development
-streamlit run app.py
+# Run the main application
+streamlit run streamlit_app.py
 
-# Production with Docker
-docker build -t ai-resume-analyzer .
-docker run -p 8501:8501 ai-resume-analyzer
+# Or run with Gemini AI features
+streamlit run phase3_gemini_app.py
 ```
 
 ## 🎯 Core Features
 
 ### 📄 Advanced Resume Analysis
-- **Multi-format Support**: PDF, DOCX, TXT parsing
-- **Intelligent Text Extraction**: Handles complex layouts
-- **Skills Detection**: 100+ technical and soft skills
-- **ATS Scoring**: Simulates applicant tracking systems
-- **Semantic Matching**: Uses sentence transformers for deep analysis
+- **Multi-format Support**: PDF, DOCX parsing with intelligent text extraction
+- **TF-IDF Similarity Matching**: Precise job-resume alignment scoring
+- **ATS Compatibility Scoring**: Simulates applicant tracking systems
+- **Interactive Visualizations**: Plotly charts and progress indicators
+- **Real-time Analysis**: Instant feedback and recommendations
 
-### 🤖 AI-Powered Improvements
-- **Resume Bullet Enhancement**: Rewrite with action verbs and metrics
-- **Cover Letter Generation**: Multiple templates (Professional, Creative, Technical)
-- **Interview Preparation**: Generate questions and STAR examples
-- **Salary Negotiation**: Personalized tips and strategies
-- **LinkedIn Optimization**: Profile summary generation
+### 🆓 FREE AI-Powered Features (Google Gemini)
+- **Resume Rewriting**: Complete optimization for specific jobs
+- **Cover Letter Generation**: 4 professional templates (Formal, Modern, Creative, Short)
+- **Interview Question Prep**: Personalized questions with answer frameworks
+- **Unlimited Usage**: No costs or rate limits with Gemini API
+- **High-Quality Output**: Professional-grade AI content generation
 
-### 📊 Professional Analytics
-- **Interactive Dashboards**: Plotly charts and gauges
-- **Skills Gap Analysis**: Visual breakdown of matches/misses
-- **Keyword Optimization**: TF-IDF based recommendations
-- **Multi-Resume Comparison**: Side-by-side analysis
-- **Historical Tracking**: Progress over time
+### 🔐 User Management & Security
+- **Secure Authentication**: Username/email/password system with SHA-256 hashing
+- **Session History**: Persistent storage of all analyses
+- **User Dashboard**: Personal analytics and progress tracking
+- **Data Privacy**: Secure user data isolation and protection
+- **SQLite Database**: Local storage with easy PostgreSQL migration
 
-### 📥 Enterprise Export Options
-- **Branded PDF Reports**: Professional formatting with charts
-- **DOCX Documents**: Editable cover letters and reports
-- **JSON Data Export**: Raw analysis data
-- **Batch Processing**: Multiple resume analysis
+### 📈 Professional Analytics & Export
+- **Interactive Dashboards**: Real-time score visualization with Plotly
+- **Gauge Visualizations**: Professional match score displays
+- **Branded Reports**: PDF export with custom styling
+- **Analysis History**: Track progress over multiple sessions
+- **Creator Attribution**: "Created by Syed Ali Hashmi" branding
 
 ## 🔧 Advanced Configuration
 
 ### Environment Variables
 ```bash
 # Core Settings
-OPENAI_API_KEY=your_key_here
-DATABASE_URL=postgresql://user:pass@localhost/db
+GEMINI_API_KEY=your_free_gemini_key_here
+DATABASE_URL=sqlite:///resumeai.db
 SECRET_KEY=your_secret_key
 
 # Feature Flags
@@ -167,30 +176,29 @@ psql -c "CREATE DATABASE resume_analyzer;"
 python -c "from src.storage import StorageManager; StorageManager().init_database()"
 ```
 
-## 🚀 Deployment Options
+## 🚀 Application Versions
 
-### Streamlit Cloud (Recommended)
-1. Push to GitHub
+### 🎯 Main Application (`streamlit_app.py`)
+- **Streamlit Cloud Compatible**: Optimized for deployment
+- **Core Features**: Resume analysis, ATS scoring, user authentication
+- **No External Dependencies**: Works without AI API keys
+- **Professional UI**: Branded interface with creator attribution
+
+### 🆓 FREE AI Version (`phase3_gemini_app.py`)
+- **Google Gemini Integration**: Unlimited FREE AI features
+- **Advanced Content Generation**: Resume rewriting, cover letters, interview prep
+- **Multiple Templates**: 4 professional cover letter styles
+- **Complete SaaS Features**: Full user management and history
+
+## 🚀 Deployment
+
+### Streamlit Cloud (Live)
+**Current deployment:** https://resume-analyzer-ali.streamlit.app/
+
+1. Fork the repository
 2. Connect to [Streamlit Cloud](https://streamlit.io/cloud)
-3. Add secrets in dashboard
-4. Deploy automatically
-
-### Docker Deployment
-```bash
-# Build and run
-docker build -t ai-resume-analyzer .
-docker run -p 8501:8501 -e OPENAI_API_KEY=your_key ai-resume-analyzer
-
-# Docker Compose
-docker-compose up -d
-```
-
-### VPS/Cloud Deployment
-```bash
-# With reverse proxy (nginx)
-# SSL certificate (Let's Encrypt)
-# Process manager (PM2/systemd)
-```
+3. Deploy `streamlit_app.py`
+4. Add Gemini API key in app settings (optional)
 
 ## 🧪 Testing
 
@@ -250,22 +258,34 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Streamlit Team** - Amazing framework
-- **OpenAI** - GPT API access
+- **Google AI** - FREE Gemini API access
 - **spaCy Team** - NLP capabilities
 - **Hugging Face** - Transformer models
 - **Open Source Community** - Various libraries
 
-## 📞 Support
+## 📞 Support & Contact
 
-- **Documentation**: [Wiki](https://github.com/yourusername/ai-resume-analyzer/wiki)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ai-resume-analyzer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/ai-resume-analyzer/discussions)
-- **Email**: support@ai-resume-analyzer.com
+- **Creator**: Syed Ali Hashmi 🚀
+- **Live Demo**: [AI Resume Analyzer Pro](https://resume-analyzer-ali.streamlit.app/)
+- **Repository**: [GitHub](https://github.com/syedali/ai-resume-analyzer)
+- **FREE Gemini API**: [Get API Key](https://makersuite.google.com/app/apikey)
+- **Issues**: Report bugs and request features via GitHub Issues
 
 ---
 
-**🎯 Built for the modern job market - Empowering careers with AI**
+**🎯 Built for the modern job market - Empowering careers with FREE AI**
+
+**Created by Syed Ali Hashmi** 🚀
 
 [![Deploy to Streamlit Cloud](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io/cloud)
-[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/yourusername/ai-resume-analyzer)
+[![Google Gemini](https://img.shields.io/badge/Google-Gemini%20AI-blue?style=for-the-badge&logo=google)](https://makersuite.google.com/app/apikey)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## 🆓 Live Demo
+
+**Try the app now:** [AI Resume Analyzer Pro](https://resume-analyzer-ali.streamlit.app/)
+
+- ✅ **No signup required for demo**
+- ✅ **FREE Google Gemini AI integration**
+- ✅ **Professional resume analysis**
+- ✅ **Instant results and recommendations**

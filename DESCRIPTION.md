@@ -18,7 +18,6 @@
 
 ### **AI & Machine Learning**
 - **Google Gemini 1.5-Flash** - FREE advanced language model for content generation
-- **OpenAI GPT-3.5/4** - Alternative paid AI model (optional)
 - **spaCy 3.6+** - Industrial-strength NLP library
 - **scikit-learn** - Machine learning algorithms for text analysis
 - **sentence-transformers** - Semantic similarity analysis

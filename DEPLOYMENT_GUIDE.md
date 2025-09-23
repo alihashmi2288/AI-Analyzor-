@@ -1,6 +1,8 @@
-# 🚀 ResumeAI Pro - Deployment Guide
+# 🚀 AI Resume Analyzer Pro - Deployment Guide
 
-Complete guide for deploying your AI Resume Analyzer to production.
+**Created by Syed Ali Hashmi** 🚀
+
+Complete guide for deploying your AI Resume Analyzer to production with FREE Google Gemini AI integration.
 
 ## 📋 Phase Implementation Status
 
@@ -20,28 +22,37 @@ Complete guide for deploying your AI Resume Analyzer to production.
 - Word cloud visualizations
 - AI improvement suggestions
 
-### ✅ Phase 3 - Pro-Level SaaS (`phase3_app.py`)
-- User authentication & registration
-- Session history & database storage
-- One-click resume rewrite
-- Cover letter templates (Formal, Modern, Creative, Short)
-- AI interview question generator
-- Branded PDF reports
-- Professional UI with custom CSS
+### ✅ Phase 3 - FREE AI SaaS (`streamlit_app.py` & `phase3_gemini_app.py`)
+- **Streamlit Cloud Compatible**: Main app with core features
+- **FREE Google Gemini AI**: Unlimited content generation
+- **User Authentication**: Secure login/signup with SHA-256 hashing
+- **Session History**: SQLite database with analysis tracking
+- **Professional UI**: Branded interface with creator attribution
+- **Live Deployment**: Currently running at resume-analyzer-ali.streamlit.app
 
 ## 🎯 Quick Start
 
 ### Local Development
 ```bash
 # Install dependencies
-pip install -r requirements_phase3.txt
+pip install -r requirements.txt
 
 # Download NLP model
 python -m spacy download en_core_web_sm
 
-# Run Phase 3 (Full SaaS)
-streamlit run phase3_app.py
+# Run main app (Streamlit Cloud compatible)
+streamlit run streamlit_app.py
+
+# Or run with FREE Gemini AI features
+streamlit run phase3_gemini_app.py
 ```
+
+### 🆓 FREE Gemini AI Setup
+1. **Get API Key**: Visit https://makersuite.google.com/app/apikey
+2. **Sign in**: Use your Google account (free)
+3. **Create Key**: Generate API key instantly
+4. **Add to App**: Paste in sidebar settings
+5. **Unlimited Usage**: No costs or rate limits
 
 ### Production Deployment
 
@@ -77,7 +88,7 @@ docker run -p 8501:8501 \
 
 ### Environment Variables
 ```bash
-OPENAI_API_KEY=your_openai_api_key
+GEMINI_API_KEY=your_free_gemini_api_key
 SECRET_KEY=your_secret_key
 DATABASE_URL=sqlite:///resumeai.db
 ```
