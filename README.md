@@ -100,21 +100,17 @@ cp .env.example .env
 # Add OpenAI API key, database URL, etc.
 ```
 
-### 2. Get FREE Gemini API Key
-
-1. Visit: https://makersuite.google.com/app/apikey
-2. Sign in with Google account
-3. Create API key (completely free)
-4. Copy the key for use in the app
-
-### 3. Run Application
+### 2. Run Application
 
 ```bash
-# Run the main application
+# Run the main application (basic features)
 streamlit run streamlit_app.py
 
-# Or run with Gemini AI features
+# Or run with FREE AI features (recommended)
 streamlit run phase3_gemini_app.py
+
+# Quick start with batch file
+.\run_app.bat
 ```
 
 ## 🎯 Core Features
@@ -126,11 +122,12 @@ streamlit run phase3_gemini_app.py
 - **Interactive Visualizations**: Plotly charts and progress indicators
 - **Real-time Analysis**: Instant feedback and recommendations
 
-### 🆓 FREE AI-Powered Features (Google Gemini)
+### 🆓 FREE AI-Powered Features (Built-in Gemini)
 - **Resume Rewriting**: Complete optimization for specific jobs
 - **Cover Letter Generation**: 4 professional templates (Formal, Modern, Creative, Short)
 - **Interview Question Prep**: Personalized questions with answer frameworks
-- **Unlimited Usage**: No costs or rate limits with Gemini API
+- **No Setup Required**: Built-in API key - works immediately
+- **Unlimited Usage**: No costs or rate limits
 - **High-Quality Output**: Professional-grade AI content generation
 
 ### 🔐 User Management & Security
@@ -178,17 +175,18 @@ python -c "from src.storage import StorageManager; StorageManager().init_databas
 
 ## 🚀 Application Versions
 
-### 🎯 Main Application (`streamlit_app.py`)
-- **Streamlit Cloud Compatible**: Optimized for deployment
+### 🎯 Basic Version (`streamlit_app.py`)
 - **Core Features**: Resume analysis, ATS scoring, user authentication
-- **No External Dependencies**: Works without AI API keys
+- **No AI Dependencies**: Works without external APIs
+- **Streamlit Cloud Ready**: Optimized for deployment
 - **Professional UI**: Branded interface with creator attribution
 
-### 🆓 FREE AI Version (`phase3_gemini_app.py`)
-- **Google Gemini Integration**: Unlimited FREE AI features
+### 🆓 AI-Powered Version (`phase3_gemini_app.py`) - **RECOMMENDED**
+- **Built-in Gemini AI**: No setup required - works immediately
+- **Complete SaaS Features**: Full user management and analysis history
 - **Advanced Content Generation**: Resume rewriting, cover letters, interview prep
-- **Multiple Templates**: 4 professional cover letter styles
-- **Complete SaaS Features**: Full user management and history
+- **4 Cover Letter Templates**: Formal, Modern, Creative, Short styles
+- **Zero Configuration**: API key built-in, secrets file included
 
 ## 🚀 Deployment
 
@@ -268,7 +266,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Creator**: Syed Ali Hashmi 🚀
 - **Live Demo**: [AI Resume Analyzer Pro](https://resume-analyzer-ali.streamlit.app/)
 - **Repository**: [GitHub](https://github.com/syedali/ai-resume-analyzer)
-- **FREE Gemini API**: [Get API Key](https://makersuite.google.com/app/apikey)
+- **Built-in AI**: No setup required - works immediately
 - **Issues**: Report bugs and request features via GitHub Issues
 
 ---
@@ -285,7 +283,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Try the app now:** [AI Resume Analyzer Pro](https://resume-analyzer-ali.streamlit.app/)
 
-- ✅ **No signup required for demo**
-- ✅ **FREE Google Gemini AI integration**
-- ✅ **Professional resume analysis**
-- ✅ **Instant results and recommendations**
+- ✅ **No setup required** - Built-in AI features
+- ✅ **FREE Gemini AI** - Unlimited content generation
+- ✅ **Professional analysis** - TF-IDF matching & ATS scoring
+- ✅ **Instant results** - Real-time recommendations
+- ✅ **Complete SaaS** - User authentication & history

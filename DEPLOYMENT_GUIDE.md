@@ -22,13 +22,13 @@ Complete guide for deploying your AI Resume Analyzer to production with FREE Goo
 - Word cloud visualizations
 - AI improvement suggestions
 
-### ✅ Phase 3 - FREE AI SaaS (`streamlit_app.py` & `phase3_gemini_app.py`)
-- **Streamlit Cloud Compatible**: Main app with core features
-- **FREE Google Gemini AI**: Unlimited content generation
-- **User Authentication**: Secure login/signup with SHA-256 hashing
-- **Session History**: SQLite database with analysis tracking
-- **Professional UI**: Branded interface with creator attribution
-- **Live Deployment**: Currently running at resume-analyzer-ali.streamlit.app
+### ✅ Phase 3 - Built-in AI SaaS (`phase3_gemini_app.py`) - **RECOMMENDED**
+- **Zero Setup Required**: Built-in Gemini API key works immediately
+- **Complete SaaS Platform**: User authentication, session history, professional UI
+- **FREE AI Features**: Resume rewriting, cover letters, interview prep
+- **Secrets Management**: Proper .streamlit/secrets.toml configuration
+- **Production Ready**: Currently deployed at resume-analyzer-ali.streamlit.app
+- **No User Configuration**: API key built-in, works out of the box
 
 ## 🎯 Quick Start
 
@@ -40,19 +40,22 @@ pip install -r requirements.txt
 # Download NLP model
 python -m spacy download en_core_web_sm
 
-# Run main app (Streamlit Cloud compatible)
+# Run basic app (no AI features)
 streamlit run streamlit_app.py
 
-# Or run with FREE Gemini AI features
+# Run AI-powered app (RECOMMENDED - no setup needed)
 streamlit run phase3_gemini_app.py
+
+# Quick start with batch file
+.\run_app.bat
 ```
 
-### 🆓 FREE Gemini AI Setup
-1. **Get API Key**: Visit https://makersuite.google.com/app/apikey
-2. **Sign in**: Use your Google account (free)
-3. **Create Key**: Generate API key instantly
-4. **Add to App**: Paste in sidebar settings
-5. **Unlimited Usage**: No costs or rate limits
+### ✅ **No Setup Required!**
+- **Built-in API Key**: Gemini AI works immediately
+- **Secrets Included**: .streamlit/secrets.toml pre-configured
+- **Zero Configuration**: Just run and use
+- **Unlimited Usage**: No costs or rate limits
+- **Professional Features**: Complete SaaS functionality
 
 ### Production Deployment
 

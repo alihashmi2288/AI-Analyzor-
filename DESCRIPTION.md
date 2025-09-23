@@ -69,12 +69,13 @@
 - **Section Structure**: Validates standard resume format
 - **Formatting Assessment**: ATS-friendly layout analysis
 
-### **3. AI-Powered Content Generation (FREE with Gemini)**
+### **3. AI-Powered Content Generation (Built-in FREE Gemini)**
 - **Resume Rewriting**: Complete optimization for specific jobs
 - **Cover Letter Templates**: 4 professional styles (Formal, Modern, Creative, Short)
 - **Interview Questions**: Personalized prep based on resume and job
 - **STAR Method Examples**: Behavioral interview preparation
 - **Improvement Suggestions**: Actionable recommendations
+- **No Setup Required**: Built-in API key works immediately
 - **100% FREE**: Powered by Google Gemini API with no usage limits
 
 ### **4. Professional Analytics**

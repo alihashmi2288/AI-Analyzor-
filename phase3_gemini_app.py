@@ -214,10 +214,16 @@ def calculate_ats_score(resume_text, jd_text):
     return min(round(ats_score, 1), 100)
 
 # Gemini AI functions
-def generate_with_gemini(prompt, api_key, max_tokens=1000):
-    """Generate content using Gemini AI"""
-    if not api_key:
-        return "Please provide Gemini API key"
+def get_gemini_api_key():
+    """Get Gemini API key from secrets or built-in"""
+    try:
+        return st.secrets["GEMINI_API_KEY"]
+    except:
+        return "AIzaSyCZm94zQC5KubmjcH1Qo5kXU2mvTIjxOsg"
+
+def generate_with_gemini(prompt, max_tokens=1000):
+    """Generate content using Gemini AI with built-in key"""
+    api_key = get_gemini_api_key()
     
     try:
         genai.configure(api_key=api_key)
@@ -229,7 +235,7 @@ def generate_with_gemini(prompt, api_key, max_tokens=1000):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def generate_cover_letter_gemini(resume_text, jd_text, job_title, template_type, api_key):
+def generate_cover_letter_gemini(resume_text, jd_text, job_title, template_type):
     """Generate cover letter using Gemini"""
     template_styles = {
         "Formal": "formal and professional tone",
@@ -255,9 +261,9 @@ def generate_cover_letter_gemini(resume_text, jd_text, job_title, template_type,
     - Under 400 words
     """
     
-    return generate_with_gemini(prompt, api_key)
+    return generate_with_gemini(prompt)
 
-def generate_resume_rewrite_gemini(resume_text, jd_text, api_key):
+def generate_resume_rewrite_gemini(resume_text, jd_text):
     """Rewrite resume using Gemini"""
     prompt = f"""
     Rewrite this resume to match the job description perfectly:
@@ -275,9 +281,9 @@ def generate_resume_rewrite_gemini(resume_text, jd_text, api_key):
     Return the complete improved resume.
     """
     
-    return generate_with_gemini(prompt, api_key, max_tokens=1500)
+    return generate_with_gemini(prompt, max_tokens=1500)
 
-def generate_interview_questions_gemini(resume_text, jd_text, api_key):
+def generate_interview_questions_gemini(resume_text, jd_text):
     """Generate interview questions using Gemini"""
     prompt = f"""
     Generate 8 interview questions based on:
@@ -297,7 +303,7 @@ def generate_interview_questions_gemini(resume_text, jd_text, api_key):
     Format as numbered list.
     """
     
-    return generate_with_gemini(prompt, api_key, max_tokens=1200)
+    return generate_with_gemini(prompt, max_tokens=1200)
 
 def main():
     # Initialize session state
@@ -306,11 +312,11 @@ def main():
     if 'user_data' not in st.session_state:
         st.session_state.user_data = None
     
-    # Header with FREE badge
+    # Header with creator badge
     st.markdown("""
     <div class="main-header">
-        <h1>🎯 ResumeAI Pro</h1>
-        <div class="free-badge">✨ 100% FREE with Gemini AI ✨</div>
+        <h1>🎯 AI Resume Analyzer</h1>
+        <div class="free-badge">Created by Syed Ali Hashmi</div>
         <p>Professional AI-Powered Resume Analysis & Optimization</p>
     </div>
     """, unsafe_allow_html=True)
@@ -380,19 +386,20 @@ def show_main_app():
         st.divider()
         
         st.header("⚙️ Settings")
-        st.markdown("🆓 **FREE Gemini API Setup:**")
-        st.info("Get your FREE API key at: https://makersuite.google.com/app/apikey")
-        api_key = st.text_input("Gemini API Key", type="password", help="Free from Google AI Studio")
-        
-        if api_key:
-            st.success("✅ Gemini AI Ready!")
+        st.success("✅ AI Features Ready!")
+        st.info("🆓 FREE Gemini AI is built-in - no API key needed!")
         
         st.markdown("---")
-        st.markdown("### 🎯 Why Gemini?")
-        st.success("✅ Completely FREE")
-        st.success("✅ No usage limits")
-        st.success("✅ High quality AI")
-        st.success("✅ Fast responses")
+        st.markdown("### 🎯 Why AI Resume Analyzer?")
+        st.success("✅ Professional Analysis")
+        st.success("✅ ATS Optimization")
+        st.success("✅ AI-Powered Insights")
+        st.success("✅ Complete SaaS Platform")
+        st.markdown("---")
+        st.markdown("**Made by Syed Ali Hashmi** 🚀")
+        st.markdown("📧 [hashmi.ali2288@gmail.com](mailto:hashmi.ali2288@gmail.com)")
+        st.markdown("💼 [LinkedIn](https://www.linkedin.com/in/hashmiali2288/)")
+        st.markdown("💻 [GitHub](https://github.com/alihashmi2288)")
     
     # Main tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -407,13 +414,13 @@ def show_main_app():
         show_dashboard_tab()
     
     with tab2:
-        show_resume_rewrite_tab(api_key)
+        show_resume_rewrite_tab()
     
     with tab3:
-        show_cover_letter_tab(api_key)
+        show_cover_letter_tab()
     
     with tab4:
-        show_interview_prep_tab(api_key)
+        show_interview_prep_tab()
     
     with tab5:
         show_history_tab()
@@ -493,20 +500,18 @@ def show_dashboard_tab():
         else:
             st.error("Please upload resume and add job description")
 
-def show_resume_rewrite_tab(api_key):
+def show_resume_rewrite_tab():
     st.header("📄 AI Resume Rewrite (FREE)")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
         st.info("🤖 Gemini AI will rewrite your resume for FREE!")
         
         if st.button("✨ Rewrite My Resume", type="primary"):
-            if api_key:
-                with st.spinner("🤖 Gemini AI is rewriting your resume..."):
-                    rewritten_resume = generate_resume_rewrite_gemini(
-                        st.session_state.resume_text,
-                        st.session_state.jd_text,
-                        api_key
-                    )
+            with st.spinner("🤖 Gemini AI is rewriting your resume..."):
+                rewritten_resume = generate_resume_rewrite_gemini(
+                    st.session_state.resume_text,
+                    st.session_state.jd_text
+                )
                 
                 st.subheader("📝 Your Optimized Resume")
                 edited_resume = st.text_area("AI-Optimized Resume:", rewritten_resume, height=400)
@@ -518,12 +523,11 @@ def show_resume_rewrite_tab(api_key):
                     "text/plain",
                     use_container_width=True
                 )
-            else:
-                st.warning("🔑 Please add your FREE Gemini API key in the sidebar")
+
     else:
         st.info("📄 Please analyze a resume first in the Dashboard tab")
 
-def show_cover_letter_tab(api_key):
+def show_cover_letter_tab():
     st.header("📝 AI Cover Letter Generator (FREE)")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
@@ -539,15 +543,13 @@ def show_cover_letter_tab(api_key):
             st.success("🚀 High quality output")
         
         if st.button("✨ Generate Cover Letter", type="primary"):
-            if api_key:
-                with st.spinner(f"🤖 Creating {template_type.lower()} cover letter..."):
-                    cover_letter = generate_cover_letter_gemini(
-                        st.session_state.resume_text,
-                        st.session_state.jd_text,
-                        job_title,
-                        template_type,
-                        api_key
-                    )
+            with st.spinner(f"🤖 Creating {template_type.lower()} cover letter..."):
+                cover_letter = generate_cover_letter_gemini(
+                    st.session_state.resume_text,
+                    st.session_state.jd_text,
+                    job_title,
+                    template_type
+                )
                 
                 st.subheader(f"📄 Your {template_type} Cover Letter")
                 edited_letter = st.text_area("Edit your cover letter:", cover_letter, height=400)
@@ -559,25 +561,21 @@ def show_cover_letter_tab(api_key):
                     "text/plain",
                     use_container_width=True
                 )
-            else:
-                st.warning("🔑 Please add your FREE Gemini API key")
     else:
         st.info("📄 Please analyze a resume first")
 
-def show_interview_prep_tab(api_key):
+def show_interview_prep_tab():
     st.header("❓ AI Interview Preparation (FREE)")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
         st.info("🎯 Get personalized interview questions with FREE Gemini AI")
         
         if st.button("🎤 Generate Interview Questions", type="primary"):
-            if api_key:
-                with st.spinner("🤖 Preparing your interview questions..."):
-                    questions = generate_interview_questions_gemini(
-                        st.session_state.resume_text,
-                        st.session_state.jd_text,
-                        api_key
-                    )
+            with st.spinner("🤖 Preparing your interview questions..."):
+                questions = generate_interview_questions_gemini(
+                    st.session_state.resume_text,
+                    st.session_state.jd_text
+                )
                 
                 st.subheader("📋 Your Personalized Interview Questions")
                 st.markdown(questions)
@@ -589,8 +587,6 @@ def show_interview_prep_tab(api_key):
                     "text/plain",
                     use_container_width=True
                 )
-            else:
-                st.warning("🔑 Please add your FREE Gemini API key")
     else:
         st.info("📄 Please analyze a resume first")
 
