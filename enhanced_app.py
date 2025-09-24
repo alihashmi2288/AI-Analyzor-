@@ -1,13 +1,12 @@
 """
-Phase 3 - Pro-Level Features with FREE Gemini AI
-Complete SaaS application using Google's free Gemini API instead of paid OpenAI
+Enhanced AI Resume Analyzer Pro
+Version 2.0 with Advanced Features
+Created by Syed Ali Hashmi
 """
 
 import streamlit as st
-import streamlit_authenticator as stauth
 import sqlite3
 import hashlib
-import json
 from datetime import datetime
 import pdfplumber
 import docx2txt
@@ -16,60 +15,68 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import google.generativeai as genai
 import plotly.graph_objects as go
-import plotly.express as px
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-import pandas as pd
-from fpdf import FPDF
-from docx import Document
-from docx.shared import Inches
-import io
-import os
-import base64
-from dotenv import load_dotenv
+from enhanced_features import *
 
-# Load environment variables
-load_dotenv()
-
-# Page config with branding
+# Page config
 st.set_page_config(
-    page_title="ResumeAI Pro (Free)",
-    page_icon="🎯",
+    page_title="AI Resume Analyzer Pro v2.0",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional branding
+# Enhanced CSS
 st.markdown("""
 <style>
     .main-header {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 2rem;
-        border-radius: 10px;
+        border-radius: 15px;
         color: white;
         text-align: center;
         margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
+        padding: 1.5rem;
+        border-radius: 15px;
         color: white;
         text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
     }
-    .free-badge {
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+    .feature-card {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid #667eea;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+        color: #333;
+        font-weight: 500;
+    }
+    .success-tip {
         background: linear-gradient(90deg, #00c851 0%, #007e33 100%);
         color: white;
         padding: 0.5rem 1rem;
         border-radius: 20px;
-        font-weight: bold;
-        display: inline-block;
         margin: 0.5rem 0;
+        display: inline-block;
+    }
+    .keyword-highlight {
+        background-color: #ffeb3b;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-weight: bold;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Database and auth functions (same as before)
+# Database functions (same as before)
 def init_database():
     conn = sqlite3.connect('resumeai.db')
     cursor = conn.cursor()
@@ -162,7 +169,7 @@ def extract_text_from_pdf(uploaded_file):
         for page in pdf.pages:
             page_text = page.extract_text()
             if page_text:
-                text += page_text + "\n"
+                text += page_text + "\\n"
     return text
 
 def extract_text_from_docx(uploaded_file):
@@ -172,8 +179,8 @@ def clean_text(text):
     if not text:
         return ""
     text = text.lower()
-    text = re.sub(r'\s+', ' ', text)
-    text = re.sub(r'[^\w\s.,;:!?()-]', ' ', text)
+    text = re.sub(r'\\s+', ' ', text)
+    text = re.sub(r'[^\\w\\s.,;:!?()-]', ' ', text)
     return text.strip()
 
 def calculate_match_score(resume_text, jd_text):
@@ -215,15 +222,13 @@ def calculate_ats_score(resume_text, jd_text):
 
 # Gemini AI functions
 def get_gemini_api_key():
-    """Get Gemini API key from secrets"""
     try:
         return st.secrets["GEMINI_API_KEY"]
     except:
-        st.error("⚠️ Gemini API key not found in secrets. Please add GEMINI_API_KEY to .streamlit/secrets.toml")
-        return None
+        # Fallback to built-in key for demo
+        return "AIzaSyCdLLR7DaN2-WXw2-kRFoOO99scfXxjMdY"
 
 def generate_with_gemini(prompt, max_tokens=1000):
-    """Generate content using Gemini AI"""
     api_key = get_gemini_api_key()
     
     if not api_key:
@@ -239,76 +244,6 @@ def generate_with_gemini(prompt, max_tokens=1000):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def generate_cover_letter_gemini(resume_text, jd_text, job_title, template_type):
-    """Generate cover letter using Gemini"""
-    template_styles = {
-        "Formal": "formal and professional tone",
-        "Modern": "contemporary and engaging style", 
-        "Creative": "creative and innovative approach",
-        "Short": "concise and direct format"
-    }
-    
-    style = template_styles.get(template_type, "professional")
-    
-    prompt = f"""
-    Write a {style} cover letter for the job: {job_title}
-    
-    Resume Summary: {resume_text[:1500]}
-    Job Description: {jd_text[:1000]}
-    
-    Requirements:
-    - Use {style}
-    - 3-4 paragraphs maximum
-    - Highlight relevant skills from resume
-    - Address job requirements
-    - Professional closing
-    - Under 400 words
-    """
-    
-    return generate_with_gemini(prompt)
-
-def generate_resume_rewrite_gemini(resume_text, jd_text):
-    """Rewrite resume using Gemini"""
-    prompt = f"""
-    Rewrite this resume to match the job description perfectly:
-    
-    Original Resume: {resume_text[:2000]}
-    Target Job: {jd_text[:1000]}
-    
-    Instructions:
-    1. Keep same structure but improve content
-    2. Add keywords from job description
-    3. Quantify achievements where possible
-    4. Use strong action verbs
-    5. Make it ATS-friendly
-    
-    Return the complete improved resume.
-    """
-    
-    return generate_with_gemini(prompt, max_tokens=1500)
-
-def generate_interview_questions_gemini(resume_text, jd_text):
-    """Generate interview questions using Gemini"""
-    prompt = f"""
-    Generate 8 interview questions based on:
-    
-    Resume: {resume_text[:1500]}
-    Job Description: {jd_text[:1000]}
-    
-    Create:
-    - 4 technical/role-specific questions
-    - 4 behavioral questions
-    
-    For each question provide:
-    1. The question
-    2. Key points to address
-    3. Example answer framework
-    
-    Format as numbered list.
-    """
-    
-    return generate_with_gemini(prompt, max_tokens=1200)
-
 def main():
     # Initialize session state
     if 'authenticated' not in st.session_state:
@@ -316,12 +251,13 @@ def main():
     if 'user_data' not in st.session_state:
         st.session_state.user_data = None
     
-    # Header with creator badge
+    # Enhanced header
     st.markdown("""
     <div class="main-header">
-        <h1>🎯 AI Resume Analyzer</h1>
-        <div class="free-badge">Created by Syed Ali Hashmi</div>
-        <p>Professional AI-Powered Resume Analysis & Optimization</p>
+        <h1>🚀 AI Resume Analyzer Pro v2.0</h1>
+        <div class="success-tip">Enhanced with Advanced Features</div>
+        <p>Professional AI-Powered Resume Analysis & Career Optimization</p>
+        <small>Created by Syed Ali Hashmi</small>
     </div>
     """, unsafe_allow_html=True)
     
@@ -331,14 +267,14 @@ def main():
         return
     
     # Main application
-    show_main_app()
+    show_enhanced_app()
 
 def show_auth_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("### Welcome to ResumeAI Pro (FREE)")
-        st.info("🆓 Completely FREE to use!")
+        st.markdown("### Welcome to AI Resume Analyzer Pro v2.0")
+        st.info("🚀 Enhanced with advanced analytics and career insights!")
         
         tab1, tab2 = st.tabs(["Sign In", "Sign Up"])
         
@@ -377,10 +313,10 @@ def show_auth_page():
                     else:
                         st.error("Username or email already exists")
 
-def show_main_app():
-    # Sidebar
+def show_enhanced_app():
+    # Enhanced sidebar
     with st.sidebar:
-        st.markdown(f"### Welcome, {st.session_state.user_data['username']}!")
+        st.markdown(f"### Welcome, {st.session_state.user_data['username']}! 👋")
         
         if st.button("🚪 Logout"):
             st.session_state.authenticated = False
@@ -389,48 +325,59 @@ def show_main_app():
         
         st.divider()
         
-        st.header("⚙️ Settings")
-        st.success("✅ AI Features Ready!")
-        st.info("🆓 FREE built in API key - no API key needed!")
+        # User analytics
+        if st.session_state.user_data:
+            sessions = get_user_sessions(st.session_state.user_data['id'])
+            analytics = create_usage_analytics(sessions)
+            
+            if analytics:
+                st.markdown("### 📊 Your Stats")
+                create_success_metrics_display(analytics)
         
-        st.markdown("---")
+        st.divider()
+        
         st.markdown("### 🎯 Why AI Resume Analyzer?")
-        st.success("✅ Professional Analysis")
-        st.success("✅ ATS Optimization")
-        st.success("✅ AI-Powered Insights")
-        st.success("✅ Complete SaaS Platform")
+        st.success("✅ Advanced Analytics")
+        st.success("✅ Keyword Highlighting")
+        st.success("✅ Progress Tracking")
+        st.success("✅ Multiple Export Formats")
+        
         st.markdown("---")
         st.markdown("**Made by Syed Ali Hashmi** 🚀")
         st.markdown("📧 [hashmi.ali2288@gmail.com](mailto:hashmi.ali2288@gmail.com)")
         st.markdown("💼 [LinkedIn](https://www.linkedin.com/in/hashmiali2288/)")
         st.markdown("💻 [GitHub](https://github.com/alihashmi2288)")
     
-    # Main tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Dashboard",
-        "📄 Resume Rewrite", 
-        "📝 Cover Letters",
+    # Enhanced main tabs
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🎯 Smart Analysis",
+        "📝 AI Rewrite", 
+        "💌 Cover Letters",
         "❓ Interview Prep",
+        "📊 Analytics",
         "📚 History"
     ])
     
     with tab1:
-        show_dashboard_tab()
+        show_enhanced_dashboard()
     
     with tab2:
-        show_resume_rewrite_tab()
+        show_enhanced_rewrite()
     
     with tab3:
-        show_cover_letter_tab()
+        show_enhanced_cover_letters()
     
     with tab4:
-        show_interview_prep_tab()
+        show_enhanced_interview_prep()
     
     with tab5:
-        show_history_tab()
+        show_analytics_dashboard()
+    
+    with tab6:
+        show_enhanced_history()
 
-def show_dashboard_tab():
-    st.header("📊 Resume Analysis Dashboard")
+def show_enhanced_dashboard():
+    st.header("🎯 Smart Resume Analysis")
     
     col1, col2 = st.columns([1, 1])
     
@@ -445,7 +392,7 @@ def show_dashboard_tab():
                 resume_text = extract_text_from_docx(resume_file)
             
             st.session_state.resume_text = resume_text
-            st.success(f"✅ {resume_file.name} uploaded")
+            st.success(f"✅ {resume_file.name} uploaded ({len(resume_text)} characters)")
     
     with col2:
         st.subheader("📋 Job Description")
@@ -453,11 +400,12 @@ def show_dashboard_tab():
         
         if jd_input:
             st.session_state.jd_text = jd_input
+            st.info(f"📊 Job description: {len(jd_input)} characters")
     
-    # Analysis
-    if st.button("🚀 Analyze Resume", type="primary", use_container_width=True):
+    # Enhanced analysis
+    if st.button("🚀 Analyze with AI", type="primary", use_container_width=True):
         if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
-            with st.spinner("🔄 Analyzing your resume..."):
+            with st.spinner("🔄 Running advanced analysis..."):
                 match_score = calculate_match_score(st.session_state.resume_text, st.session_state.jd_text)
                 ats_score = calculate_ats_score(st.session_state.resume_text, st.session_state.jd_text)
                 
@@ -474,88 +422,115 @@ def show_dashboard_tab():
                         ats_score
                     )
             
-            # Display results with detailed breakdown
-            col1, col2, col3 = st.columns(3)
+            # Enhanced results display
+            st.subheader("📊 Analysis Results")
             
+            # Gauge charts
+            col1, col2 = st.columns(2)
             with col1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h2>{match_score}%</h2>
-                    <p>Match Score</p>
-                </div>
-                """, unsafe_allow_html=True)
+                fig1 = create_score_gauge(match_score, "Match Score")
+                st.plotly_chart(fig1, use_container_width=True)
             
             with col2:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h2>{ats_score}%</h2>
-                    <p>ATS Score</p>
-                </div>
-                """, unsafe_allow_html=True)
+                fig2 = create_score_gauge(ats_score, "ATS Score")
+                st.plotly_chart(fig2, use_container_width=True)
             
-            with col3:
-                overall = (match_score + ats_score) / 2
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h2>{overall:.1f}%</h2>
-                    <p>Overall</p>
-                </div>
-                """, unsafe_allow_html=True)
+            # Skills analysis
+            skills_data = create_skills_analysis(st.session_state.resume_text, st.session_state.jd_text)
+            
+            st.subheader("🛠️ Skills Analysis")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if skills_data['matched_skills']:
+                    st.success("✅ **Matched Skills:**")
+                    for skill in skills_data['matched_skills']:
+                        st.write(f"• {skill.title()}")
+                else:
+                    st.info("No specific skills matched")
+            
+            with col2:
+                if skills_data['missing_skills']:
+                    st.warning("⚠️ **Missing Skills:**")
+                    for skill in skills_data['missing_skills'][:5]:
+                        st.write(f"• {skill.title()}")
+                else:
+                    st.success("All required skills present!")
+            
+            # Improvement tips
+            st.subheader("💡 Personalized Recommendations")
+            tips = generate_improvement_tips(match_score, ats_score, skills_data['missing_skills'])
+            
+            for tip in tips:
+                st.markdown(f'<div class="feature-card">{tip}</div>', unsafe_allow_html=True)
+            
         else:
             st.error("Please upload resume and add job description")
 
-def show_resume_rewrite_tab():
-    st.header("📄 AI Resume Rewrite (FREE)")
+def show_enhanced_rewrite():
+    st.header("📝 AI Resume Rewrite")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
         st.info("🤖 Rewrite your resume for free!")
         
         if st.button("✨ Rewrite My Resume", type="primary"):
-            with st.spinner("🤖 Gemini AI is rewriting your resume..."):
-                rewritten_resume = generate_resume_rewrite_gemini(
-                    st.session_state.resume_text,
-                    st.session_state.jd_text
-                )
+            with st.spinner("🤖 AI is optimizing your resume..."):
+                # Generate rewritten resume
+                prompt = f"""
+                Rewrite this resume to match the job description perfectly:
+                
+                Original Resume: {st.session_state.resume_text[:2000]}
+                Target Job: {st.session_state.jd_text[:1000]}
+                
+                Instructions:
+                1. Keep same structure but improve content
+                2. Add keywords from job description
+                3. Quantify achievements where possible
+                4. Use strong action verbs
+                5. Make it ATS-friendly
+                
+                Return the complete improved resume.
+                """
+                
+                rewritten_resume = generate_with_gemini(prompt, max_tokens=1500)
                 
                 st.subheader("📝 Your Optimized Resume")
                 edited_resume = st.text_area("AI-Optimized Resume:", rewritten_resume, height=400)
                 
-                # Multiple export formats
+                # Enhanced export options
+                st.subheader("📥 Download Options")
+                export_data = create_export_options(edited_resume, "optimized_resume", "resume")
+                
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.download_button(
-                        "📄 Download as TXT",
-                        edited_resume,
+                        "📄 Download TXT",
+                        export_data['txt'],
                         "optimized_resume.txt",
                         "text/plain",
                         use_container_width=True
                     )
                 with col2:
-                    # Create HTML version
-                    html_content = f"<html><body><pre>{edited_resume}</pre></body></html>"
                     st.download_button(
-                        "🌐 Download as HTML",
-                        html_content,
+                        "🌐 Download HTML",
+                        export_data['html'],
                         "optimized_resume.html",
                         "text/html",
                         use_container_width=True
                     )
                 with col3:
-                    # Create formatted version
-                    formatted_resume = edited_resume.replace('\n', '\n\n')
                     st.download_button(
                         "📋 Download Formatted",
-                        formatted_resume,
+                        export_data['formatted'],
                         "optimized_resume_formatted.txt",
                         "text/plain",
                         use_container_width=True
                     )
-
     else:
-        st.info("📄 Please analyze a resume first in the Dashboard tab")
+        st.info("📄 Please analyze a resume first in the Smart Analysis tab")
 
-def show_cover_letter_tab():
-    st.header("📝 AI Cover Letter Generator (FREE)")
+def show_enhanced_cover_letters():
+    st.header("💌 AI Cover Letter Generator")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
         col1, col2 = st.columns([1, 1])
@@ -571,32 +546,44 @@ def show_cover_letter_tab():
         
         if st.button("✨ Generate Cover Letter", type="primary"):
             with st.spinner(f"🤖 Creating {template_type.lower()} cover letter..."):
-                cover_letter = generate_cover_letter_gemini(
-                    st.session_state.resume_text,
-                    st.session_state.jd_text,
-                    job_title,
-                    template_type
-                )
+                # Generate cover letter
+                prompt = f"""
+                Write a {template_type.lower()} cover letter for the job: {job_title}
+                
+                Resume Summary: {st.session_state.resume_text[:1500]}
+                Job Description: {st.session_state.jd_text[:1000]}
+                
+                Requirements:
+                - Use {template_type.lower()} style
+                - 3-4 paragraphs maximum
+                - Highlight relevant skills from resume
+                - Address job requirements
+                - Professional closing
+                - Under 400 words
+                """
+                
+                cover_letter = generate_with_gemini(prompt)
                 
                 st.subheader(f"📄 Your {template_type} Cover Letter")
                 edited_letter = st.text_area("Edit your cover letter:", cover_letter, height=400)
                 
-                # Multiple export formats for cover letter
+                # Enhanced export options
+                st.subheader("📥 Download Options")
+                export_data = create_export_options(edited_letter, f"cover_letter_{template_type.lower()}", "cover letter")
+                
                 col1, col2 = st.columns(2)
                 with col1:
                     st.download_button(
-                        "📝 Download as TXT",
-                        edited_letter,
+                        "📄 Download TXT",
+                        export_data['txt'],
                         f"cover_letter_{template_type.lower()}.txt",
                         "text/plain",
                         use_container_width=True
                     )
                 with col2:
-                    # Create HTML version
-                    html_letter = f"<html><body><div style='font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;'>{edited_letter.replace(chr(10), '<br>')}</div></body></html>"
                     st.download_button(
-                        "🌐 Download as HTML",
-                        html_letter,
+                        "🌐 Download HTML",
+                        export_data['html'],
                         f"cover_letter_{template_type.lower()}.html",
                         "text/html",
                         use_container_width=True
@@ -604,38 +591,55 @@ def show_cover_letter_tab():
     else:
         st.info("📄 Please analyze a resume first")
 
-def show_interview_prep_tab():
-    st.header("❓ AI Interview Preparation (FREE)")
+def show_enhanced_interview_prep():
+    st.header("❓ AI Interview Preparation")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
         st.info("🎯 Get personalized interview questions for Free")
         
         if st.button("🎤 Generate Interview Questions", type="primary"):
             with st.spinner("🤖 Preparing your interview questions..."):
-                questions = generate_interview_questions_gemini(
-                    st.session_state.resume_text,
-                    st.session_state.jd_text
-                )
+                # Generate interview questions
+                prompt = f"""
+                Generate 8 interview questions based on:
+                
+                Resume: {st.session_state.resume_text[:1500]}
+                Job Description: {st.session_state.jd_text[:1000]}
+                
+                Create:
+                - 4 technical/role-specific questions
+                - 4 behavioral questions
+                
+                For each question provide:
+                1. The question
+                2. Key points to address
+                3. Example answer framework
+                
+                Format as numbered list.
+                """
+                
+                questions = generate_with_gemini(prompt, max_tokens=1200)
                 
                 st.subheader("📋 Your Personalized Interview Questions")
                 st.markdown(questions)
                 
-                # Multiple export formats for interview prep
+                # Enhanced export options
+                st.subheader("📥 Download Options")
+                export_data = create_export_options(questions, "interview_questions", "interview preparation")
+                
                 col1, col2 = st.columns(2)
                 with col1:
                     st.download_button(
-                        "📥 Download as TXT",
-                        questions,
+                        "📄 Download TXT",
+                        export_data['txt'],
                         "interview_questions.txt",
                         "text/plain",
                         use_container_width=True
                     )
                 with col2:
-                    # Create formatted HTML version
-                    html_questions = f"<html><body><div style='font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px;'><h1>Interview Preparation</h1>{questions.replace(chr(10), '<br>')}</div></body></html>"
                     st.download_button(
-                        "🌐 Download as HTML",
-                        html_questions,
+                        "🌐 Download HTML",
+                        export_data['html'],
                         "interview_questions.html",
                         "text/html",
                         use_container_width=True
@@ -643,7 +647,43 @@ def show_interview_prep_tab():
     else:
         st.info("📄 Please analyze a resume first")
 
-def show_history_tab():
+def show_analytics_dashboard():
+    st.header("📊 Advanced Analytics")
+    
+    if st.session_state.user_data:
+        sessions = get_user_sessions(st.session_state.user_data['id'])
+        
+        if sessions:
+            # Progress chart
+            progress_fig = create_progress_chart(sessions)
+            if progress_fig:
+                st.plotly_chart(progress_fig, use_container_width=True)
+            
+            # Analytics summary
+            analytics = create_usage_analytics(sessions)
+            if analytics:
+                st.subheader("📈 Performance Summary")
+                create_success_metrics_display(analytics)
+            
+            # Recent activity
+            st.subheader("🕒 Recent Activity")
+            for session in sessions[:5]:
+                with st.expander(f"Analysis from {session[7][:16]} - Score: {session[4]}%"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Match Score", f"{session[4]}%")
+                        st.metric("ATS Score", f"{session[5]}%")
+                    with col2:
+                        if st.button(f"Load Session", key=f"load_analytics_{session[0]}"):
+                            st.session_state.resume_text = session[2]
+                            st.session_state.jd_text = session[3]
+                            st.success("Session loaded!")
+        else:
+            st.info("📊 No analytics data yet. Start by analyzing your first resume!")
+    else:
+        st.error("Please log in to view analytics")
+
+def show_enhanced_history():
     st.header("📚 Analysis History")
     
     if st.session_state.user_data:
@@ -652,16 +692,27 @@ def show_history_tab():
         if sessions:
             st.subheader(f"📊 Your Past {len(sessions)} Analyses")
             
-            for session in sessions:
+            # Add search and filter
+            search_term = st.text_input("🔍 Search your analyses:", placeholder="Search by content...")
+            
+            filtered_sessions = sessions
+            if search_term:
+                filtered_sessions = [s for s in sessions if search_term.lower() in s[2].lower() or search_term.lower() in s[3].lower()]
+            
+            for session in filtered_sessions:
                 with st.expander(f"Analysis from {session[7][:16]} - Score: {session[4]}%"):
-                    col1, col2 = st.columns(2)
+                    col1, col2, col3 = st.columns([2, 2, 1])
                     
                     with col1:
                         st.metric("Match Score", f"{session[4]}%")
                         st.metric("ATS Score", f"{session[5]}%")
                     
                     with col2:
-                        if st.button(f"Load Session", key=f"load_{session[0]}"):
+                        st.write("**Resume Preview:**")
+                        st.write(session[2][:200] + "..." if len(session[2]) > 200 else session[2])
+                    
+                    with col3:
+                        if st.button(f"Load Session", key=f"load_history_{session[0]}"):
                             st.session_state.resume_text = session[2]
                             st.session_state.jd_text = session[3]
                             st.session_state.match_score = session[4]

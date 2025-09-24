@@ -1,0 +1,13 @@
+@echo off
+echo 🚀 Starting AI Resume Analyzer Pro with Enhanced Features...
+echo.
+echo ✅ Installing dependencies...
+pip install -r requirements.txt > nul 2>&1
+echo ✅ Downloading NLP model...
+python -m spacy download en_core_web_sm > nul 2>&1
+echo.
+echo 🎯 Launching Enhanced AI Resume Analyzer...
+echo 📱 Opening at: http://localhost:8501
+echo.
+streamlit run enhanced_app.py
+pause
