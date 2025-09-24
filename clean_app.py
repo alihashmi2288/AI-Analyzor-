@@ -19,8 +19,16 @@ def load_ml_libraries():
 
 @st.cache_resource
 def load_file_libraries():
-    import pdfplumber
-    import docx2txt
+    try:
+        import pdfplumber
+    except ImportError:
+        pdfplumber = None
+    
+    try:
+        import docx2txt
+    except ImportError:
+        docx2txt = None
+    
     return pdfplumber, docx2txt
 
 @st.cache_resource
@@ -221,27 +229,182 @@ def get_user_sessions(user_id):
     return sessions
 
 # Core functions
+
+
 def extract_text_from_pdf(uploaded_file):
-    pdfplumber, _ = load_file_libraries()
-    text = ""
-    with pdfplumber.open(uploaded_file) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-    return text
+    try:
+        pdfplumber, _ = load_file_libraries()
+        text = ""
+        uploaded_file.seek(0)
+        
+        with pdfplumber.open(uploaded_file) as pdf:
+            for page_num, page in enumerate(pdf.pages):
+                try:
+                    # Method 1: Standard extraction
+                    page_text = page.extract_text()
+                    
+                    # Method 2: Enhanced extraction with different settings
+                    if not page_text or len(page_text.strip()) < 20:
+                        page_text = page.extract_text(
+                            x_tolerance=1,
+                            y_tolerance=1,
+                            layout=True,
+                            x_density=7.25,
+                            y_density=13
+                        )
+                    
+                    # Method 3: Character-level extraction
+                    if not page_text or len(page_text.strip()) < 20:
+                        chars = page.chars
+                        if chars:
+                            page_text = "".join([char['text'] for char in chars])
+                    
+                    # Method 4: Word-level extraction
+                    if not page_text or len(page_text.strip()) < 20:
+                        words = page.extract_words()
+                        if words:
+                            page_text = " ".join([word['text'] for word in words])
+                    
+                    if page_text and len(page_text.strip()) > 5:
+                        text += page_text + "\n\n"
+                        
+                except Exception as e:
+                    continue
+        
+        # Fallback to PyPDF2 if pdfplumber fails
+        if not text.strip() or len(text.strip()) < 50:
+            try:
+                import PyPDF2
+                uploaded_file.seek(0)
+                pdf_reader = PyPDF2.PdfReader(uploaded_file)
+                fallback_text = ""
+                for page_num in range(len(pdf_reader.pages)):
+                    try:
+                        page = pdf_reader.pages[page_num]
+                        page_text = page.extract_text()
+                        if page_text:
+                            fallback_text += page_text + "\n\n"
+                    except:
+                        continue
+                if fallback_text.strip():
+                    text = fallback_text
+            except:
+                pass
+        
+        # Final fallback to pymupdf if available
+        if not text.strip() or len(text.strip()) < 50:
+            try:
+                import fitz
+                uploaded_file.seek(0)
+                doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+                fitz_text = ""
+                for page in doc:
+                    fitz_text += page.get_text() + "\n\n"
+                doc.close()
+                if fitz_text.strip():
+                    text = fitz_text
+            except:
+                pass
+        
+        return text.strip() if text and len(text.strip()) > 10 else "Could not extract sufficient text from PDF. Please ensure it's not a scanned image or try converting to DOCX."
+        
+    except Exception as e:
+        return f"PDF extraction failed: {str(e)}. Please try converting to DOCX."
 
 def extract_text_from_docx(uploaded_file):
-    _, docx2txt = load_file_libraries()
-    return docx2txt.process(uploaded_file)
+    try:
+        _, docx2txt = load_file_libraries()
+        uploaded_file.seek(0)
+        text = docx2txt.process(uploaded_file)
+        
+        # If docx2txt fails, try python-docx as fallback
+        if not text or len(text.strip()) < 10:
+            text = extract_docx_fallback(uploaded_file)
+        
+        return text.strip() if text else "No text could be extracted from this DOCX file."
+        
+    except Exception as e:
+        return extract_docx_fallback(uploaded_file)
+
+def extract_docx_fallback(uploaded_file):
+    """Fallback DOCX extraction using python-docx"""
+    try:
+        from docx import Document
+        uploaded_file.seek(0)
+        
+        doc = Document(uploaded_file)
+        text = ""
+        
+        # Extract text from paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text += paragraph.text + "\n"
+        
+        # Extract text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():
+                        text += cell.text + " "
+                text += "\n"
+        
+        return text.strip() if text else "DOCX text extraction failed."
+        
+    except ImportError:
+        return "Additional libraries required for DOCX processing. Please install python-docx."
+    except Exception as e:
+        return "DOCX file appears to be corrupted or in an unsupported format."
 
 def clean_text(text):
     if not text:
         return ""
+    # Preserve important punctuation and structure
     text = text.lower()
+    # Replace multiple spaces with single space
     text = re.sub(r'\s+', ' ', text)
-    text = re.sub(r'[^\w\s.,;:!?()-]', ' ', text)
+    # Remove special characters but keep important ones
+    text = re.sub(r'[^\w\s.,;:!?()\-+#/]', ' ', text)
+    # Clean up extra spaces around punctuation
+    text = re.sub(r'\s+([.,;:!?()])', r'\1', text)
+    text = re.sub(r'([.,;:!?()])\s+', r'\1 ', text)
     return text.strip()
+
+def extract_key_phrases(text):
+    """Extract important phrases and technical terms"""
+    if not text:
+        return set()
+    
+    key_phrases = set()
+    
+    # Extract capitalized terms (likely proper nouns, technologies)
+    try:
+        cap_terms = re.findall(r'\b[A-Z][a-zA-Z]{1,20}\b', text)
+        key_phrases.update([p.lower() for p in cap_terms if len(p) > 1])
+    except:
+        pass
+    
+    # Extract technical patterns
+    try:
+        tech_patterns = re.findall(r'\b(?:API|SDK|UI|UX|AI|ML|REST|JSON|XML|HTML|CSS|SQL)\b', text, re.IGNORECASE)
+        key_phrases.update([p.lower() for p in tech_patterns])
+    except:
+        pass
+    
+    # Extract version numbers and technical specs
+    try:
+        versions = re.findall(r'\b\w+\s*v?\d+(?:\.\d+)*\b', text, re.IGNORECASE)
+        key_phrases.update([p.lower().strip() for p in versions if len(p.strip()) > 1])
+    except:
+        pass
+    
+    # Extract programming languages and frameworks
+    try:
+        prog_langs = re.findall(r'\b(?:python|java|javascript|react|angular|vue|node|express|django|flask)\b', text, re.IGNORECASE)
+        key_phrases.update([p.lower() for p in prog_langs])
+    except:
+        pass
+    
+    return key_phrases
 
 @st.cache_data
 def calculate_match_score(resume_text, jd_text):
@@ -250,78 +413,237 @@ def calculate_match_score(resume_text, jd_text):
     
     TfidfVectorizer, cosine_similarity = load_ml_libraries()
     
-    clean_resume = clean_text(resume_text)
-    clean_jd = clean_text(jd_text)
-    
-    # Enhanced TF-IDF with n-grams for better accuracy
-    vectorizer = TfidfVectorizer(
-        stop_words='english', 
-        max_features=2000,
-        ngram_range=(1, 2),  # Include bigrams
-        min_df=1,
-        max_df=0.95
-    )
-    
     try:
-        tfidf_matrix = vectorizer.fit_transform([clean_resume, clean_jd])
-        similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])
+        # Enhanced preprocessing
+        clean_resume = clean_text(resume_text)
+        clean_jd = clean_text(jd_text)
         
-        # Boost score for exact keyword matches
+        # Extract key phrases for better matching
+        resume_phrases = extract_key_phrases(resume_text)
+        jd_phrases = extract_key_phrases(jd_text)
+        
+        # 1. Advanced TF-IDF with better parameters
+        vectorizer = TfidfVectorizer(
+            stop_words='english',
+            max_features=5000,  # Increased for better coverage
+            ngram_range=(1, 4),  # Include 4-grams for technical terms
+            min_df=1,
+            max_df=0.85,  # More restrictive to filter common words
+            sublinear_tf=True,
+            token_pattern=r'\b[a-zA-Z][a-zA-Z0-9+#.-]*\b'  # Better for technical terms
+        )
+        
+        # Combine original text with key phrases for analysis
+        enhanced_resume = clean_resume + ' ' + ' '.join(resume_phrases)
+        enhanced_jd = clean_jd + ' ' + ' '.join(jd_phrases)
+        
+        tfidf_matrix = vectorizer.fit_transform([enhanced_resume, enhanced_jd])
+        base_similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+        
+        # 2. Enhanced keyword analysis with context
         jd_words = set(clean_jd.split())
         resume_words = set(clean_resume.split())
+        
+        # Categorized keywords with weights
+        critical_keywords = ['required', 'must', 'essential', 'mandatory', 'minimum']
+        skill_keywords = ['experience', 'skills', 'proficient', 'expert', 'knowledge', 'familiar']
+        action_keywords = ['manage', 'lead', 'develop', 'create', 'implement', 'design', 'build']
+        
+        # Calculate contextual matches
         exact_matches = len(jd_words & resume_words)
+        critical_context = sum(2 for word in critical_keywords if word in jd_words and any(skill in resume_words for skill in jd_words))
+        skill_matches = sum(1 for word in skill_keywords if word in jd_words and word in resume_words)
+        action_matches = sum(1 for word in action_keywords if word in jd_words and word in resume_words)
+        
+        # 3. Key phrase matching (high value)
+        phrase_overlap = len(resume_phrases & jd_phrases)
+        phrase_score_raw = (phrase_overlap / max(1, len(jd_phrases))) if jd_phrases else 0
+        
+        # 4. Technical term matching with exact boundaries
+        tech_terms_jd = set(re.findall(r'\b(?:python|java|javascript|react|angular|vue|sql|aws|azure|docker|kubernetes|git|api|rest|json|xml|html|css|node|express|django|flask|spring|hibernate)\b', clean_jd, re.IGNORECASE))
+        tech_terms_resume = set(re.findall(r'\b(?:python|java|javascript|react|angular|vue|sql|aws|azure|docker|kubernetes|git|api|rest|json|xml|html|css|node|express|django|flask|spring|hibernate)\b', clean_resume, re.IGNORECASE))
+        tech_overlap = len(tech_terms_jd & tech_terms_resume)
+        tech_score_raw = (tech_overlap / max(1, len(tech_terms_jd))) if tech_terms_jd else 0
+        
+        # 5. Experience level matching
+        jd_years = re.findall(r'(\d+)\+?\s*(?:years?|yrs?)', clean_jd)
+        resume_years = re.findall(r'(\d+)\+?\s*(?:years?|yrs?)', clean_resume)
+        
+        exp_score = 0
+        if jd_years and resume_years:
+            jd_max_years = max([int(y) for y in jd_years])
+            resume_max_years = max([int(y) for y in resume_years])
+            exp_score = min(resume_max_years / jd_max_years, 1.2) * 0.8  # Cap at 120% with 80% weight
+        
+        # 6. Calculate final weighted score
         total_jd_words = len(jd_words)
+        if total_jd_words == 0:
+            return 0
         
-        base_score = similarity[0][0] * 100
-        keyword_boost = (exact_matches / total_jd_words) * 20 if total_jd_words > 0 else 0
+        # Advanced weighted scoring
+        tfidf_component = base_similarity * 35  # 35%
+        keyword_component = (exact_matches / total_jd_words) * 25  # 25%
+        phrase_component = phrase_score_raw * 20  # 20%
+        tech_component = tech_score_raw * 15  # 15%
+        context_component = (critical_context + skill_matches + action_matches) / max(1, total_jd_words) * 10  # 10%
+        experience_component = exp_score * 5  # 5%
         
-        final_score = min(base_score + keyword_boost, 100)
-        return round(final_score, 1)
-    except:
+        final_score = (tfidf_component + keyword_component + phrase_component + 
+                      tech_component + context_component + experience_component)
+        
+        # Apply quality multipliers
+        if phrase_overlap >= 3:  # Strong phrase matching bonus
+            final_score *= 1.1
+        if tech_overlap >= 3:  # Strong technical alignment bonus
+            final_score *= 1.05
+        
+        return min(round(final_score, 1), 100)
+        
+    except Exception as e:
         return 0
 
 def calculate_ats_score(resume_text, jd_text):
     if not resume_text or not jd_text:
         return 0
     
-    jd_words = set(clean_text(jd_text).split())
-    resume_words = set(clean_text(resume_text).split())
-    
-    overlap = len(jd_words & resume_words)
-    total_jd_words = len(jd_words)
-    
-    if total_jd_words == 0:
+    try:
+        resume_lower = resume_text.lower()
+        jd_lower = jd_text.lower()
+        
+        # Enhanced preprocessing
+        clean_resume = clean_text(resume_text)
+        clean_jd = clean_text(jd_text)
+        
+        jd_words = set(clean_jd.split())
+        resume_words = set(clean_resume.split())
+        
+        if len(jd_words) == 0:
+            return 0
+        
+        # 1. Precision keyword matching (30% weight)
+        # Use exact word boundaries to prevent false matches
+        exact_keyword_matches = 0
+        for jd_word in jd_words:
+            if len(jd_word) > 2:  # Skip very short words
+                if re.search(rf'\b{re.escape(jd_word)}\b', clean_resume):
+                    exact_keyword_matches += 1
+        
+        keyword_score = (exact_keyword_matches / len(jd_words)) * 30
+        
+        # 2. Enhanced action verbs with context (20% weight)
+        action_patterns = {
+            'leadership': [r'\b(?:managed|led|supervised|directed|coordinated|mentored|guided)\b'],
+            'development': [r'\b(?:developed|created|built|designed|implemented|engineered|programmed)\b'],
+            'improvement': [r'\b(?:improved|optimized|enhanced|streamlined|increased|reduced|accelerated)\b'],
+            'achievement': [r'\b(?:achieved|delivered|completed|executed|accomplished|succeeded|exceeded)\b'],
+            'collaboration': [r'\b(?:collaborated|partnered|worked with|coordinated with|liaised)\b']
+        }
+        
+        action_score = 0
+        for category, patterns in action_patterns.items():
+            for pattern in patterns:
+                matches = len(re.findall(pattern, resume_lower))
+                action_score += min(matches * 2, 4)  # Max 4 per category
+        
+        action_score = min(action_score, 20)
+        
+        # 3. Advanced quantifiable achievements (18% weight)
+        # More sophisticated number pattern recognition
+        metrics_patterns = [
+            r'\b\d+(?:[.,]\d+)*%\b',  # Percentages
+            r'\$\d+(?:[.,]\d+)*[kKmMbB]?\b',  # Currency
+            r'\b\d+(?:[.,]\d+)*[kKmMbB]?\+?\s*(?:users?|customers?|clients?)\b',  # User metrics
+            r'\b\d+(?:[.,]\d+)*[kKmMbB]?\+?\s*(?:hours?|days?|weeks?|months?)\b',  # Time savings
+            r'\b(?:increased|improved|reduced|decreased)\s+(?:by\s+)?\d+(?:[.,]\d+)*[%kKmMbB]?\b',  # Improvement metrics
+            r'\b\d+(?:[.,]\d+)*[xX]\s*(?:faster|improvement|increase)\b'  # Multiplier metrics
+        ]
+        
+        quantifiable_count = 0
+        for pattern in metrics_patterns:
+            matches = re.findall(pattern, resume_text, re.IGNORECASE)
+            quantifiable_count += len(matches)
+        
+        quantifiable_score = min(quantifiable_count * 2, 18)
+        
+        # 4. Technical skills with exact matching (17% weight)
+        tech_skills_expanded = {
+            'programming': ['python', 'java', 'javascript', 'typescript', 'c\+\+', 'c#', 'php', 'ruby', 'go', 'rust', 'scala', 'kotlin'],
+            'web_frontend': ['html5?', 'css3?', 'react', 'angular', 'vue\.js', 'svelte', 'bootstrap', 'tailwind'],
+            'web_backend': ['node\.js', 'express', 'django', 'flask', 'spring', 'laravel', 'rails'],
+            'databases': ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'cassandra', 'dynamodb'],
+            'cloud_aws': ['aws', 'ec2', 's3', 'lambda', 'rds', 'cloudformation', 'ecs', 'eks'],
+            'cloud_other': ['azure', 'gcp', 'google cloud', 'digital ocean', 'heroku'],
+            'devops': ['docker', 'kubernetes', 'jenkins', 'gitlab ci', 'github actions', 'terraform', 'ansible'],
+            'tools': ['git', 'jira', 'confluence', 'slack', 'figma', 'postman', 'swagger']
+        }
+        
+        tech_score = 0
+        for category, skills in tech_skills_expanded.items():
+            jd_category_skills = [skill for skill in skills if re.search(rf'\b{skill}\b', jd_lower, re.IGNORECASE)]
+            if jd_category_skills:
+                resume_category_matches = sum(1 for skill in jd_category_skills 
+                                            if re.search(rf'\b{skill}\b', resume_lower, re.IGNORECASE))
+                category_score = (resume_category_matches / len(jd_category_skills)) * 3
+                tech_score += min(category_score, 3)
+        
+        tech_score = min(tech_score, 17)
+        
+        # 5. Professional structure and ATS compatibility (10% weight)
+        structure_checks = {
+            'optimal_length': 1 if 800 <= len(resume_text) <= 2500 else 0.5 if 500 <= len(resume_text) <= 3500 else 0,
+            'clear_sections': len([s for s in ['experience', 'education', 'skills', 'summary', 'objective'] if s in resume_lower]) / 5,
+            'contact_info': 1 if re.search(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b', resume_text) else 0,
+            'phone_number': 1 if re.search(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', resume_text) else 0,
+            'bullet_points': 1 if len(re.findall(r'^\s*[•\-\*]', resume_text, re.MULTILINE)) >= 5 else 0,
+            'date_consistency': 1 if len(re.findall(r'\b(?:19|20)\d{2}\b', resume_text)) >= 2 else 0,
+            'no_graphics': 1 if not re.search(r'\b(?:image|graphic|chart|table)\b', resume_lower) else 0.5
+        }
+        
+        structure_score = sum(structure_checks.values()) * (10 / len(structure_checks))
+        
+        # 6. Industry and role-specific keywords (5% weight)
+        # Dynamic industry detection based on JD
+        industry_patterns = {
+            'software': ['software', 'development', 'programming', 'coding', 'algorithm'],
+            'data': ['data', 'analytics', 'machine learning', 'statistics', 'visualization'],
+            'management': ['management', 'leadership', 'strategy', 'planning', 'team'],
+            'marketing': ['marketing', 'campaign', 'brand', 'digital', 'social media'],
+            'sales': ['sales', 'revenue', 'client', 'customer', 'business development']
+        }
+        
+        detected_industry = None
+        max_industry_score = 0
+        
+        for industry, keywords in industry_patterns.items():
+            industry_presence = sum(1 for kw in keywords if kw in jd_lower)
+            if industry_presence > max_industry_score:
+                max_industry_score = industry_presence
+                detected_industry = industry
+        
+        industry_score = 0
+        if detected_industry and detected_industry in industry_patterns:
+            industry_keywords = industry_patterns[detected_industry]
+            jd_industry_terms = sum(1 for kw in industry_keywords if kw in jd_lower)
+            resume_industry_terms = sum(1 for kw in industry_keywords if kw in resume_lower)
+            if jd_industry_terms > 0:
+                industry_score = (resume_industry_terms / jd_industry_terms) * 5
+        
+        # Calculate final ATS score with precision weighting
+        total_score = (keyword_score + action_score + quantifiable_score + 
+                      tech_score + structure_score + industry_score)
+        
+        # Apply bonus for strong technical alignment
+        if tech_score >= 12:  # Strong technical match
+            total_score *= 1.05
+        
+        # Apply penalty for poor structure
+        if structure_score < 5:
+            total_score *= 0.95
+        
+        return min(round(total_score, 1), 100)
+        
+    except Exception as e:
         return 0
-    
-    # Base keyword overlap score
-    base_score = (overlap / total_jd_words) * 60
-    
-    # Enhanced action verbs list
-    action_verbs = [
-        'managed', 'led', 'developed', 'created', 'improved', 'achieved',
-        'implemented', 'designed', 'optimized', 'increased', 'reduced',
-        'delivered', 'executed', 'coordinated', 'analyzed', 'built'
-    ]
-    action_count = sum(1 for verb in action_verbs if verb in resume_text.lower())
-    action_score = min(action_count * 2, 15)
-    
-    # Check for quantifiable achievements (numbers/percentages)
-    numbers = re.findall(r'\d+[%$]?', resume_text)
-    quantifiable_score = min(len(numbers) * 1.5, 10)
-    
-    # Check for relevant skills/technologies
-    tech_skills = [
-        'python', 'java', 'javascript', 'react', 'sql', 'aws', 'docker',
-        'git', 'linux', 'html', 'css', 'node', 'mongodb', 'kubernetes'
-    ]
-    skill_matches = sum(1 for skill in tech_skills if skill in resume_text.lower())
-    skill_score = min(skill_matches * 1, 10)
-    
-    # Professional formatting check
-    format_score = 5 if len(resume_text) > 500 else 0
-    
-    total_score = base_score + action_score + quantifiable_score + skill_score + format_score
-    return min(round(total_score, 1), 100)
 
 # Gemini AI
 def get_gemini_api_key():
@@ -575,13 +897,31 @@ def show_analysis():
         resume_file = st.file_uploader("Choose resume file", type=['pdf', 'docx'])
         
         if resume_file:
-            if resume_file.type == "application/pdf":
-                resume_text = extract_text_from_pdf(resume_file)
-            else:
-                resume_text = extract_text_from_docx(resume_file)
-            
-            st.session_state.resume_text = resume_text
-            st.success(f"✅ {resume_file.name} uploaded")
+            with st.spinner("📄 Processing file..."):
+                try:
+                    if resume_file.type == "application/pdf" or resume_file.name.lower().endswith('.pdf'):
+                        resume_text = extract_text_from_pdf(resume_file)
+                    elif resume_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" or resume_file.name.lower().endswith('.docx'):
+                        resume_text = extract_text_from_docx(resume_file)
+                    else:
+                        st.error("Unsupported file type. Please upload PDF or DOCX files only.")
+                        return
+                    
+                    if resume_text and len(resume_text.strip()) > 20:
+                        st.session_state.resume_text = resume_text
+                        word_count = len(resume_text.split())
+                        st.success(f"✅ {resume_file.name} uploaded successfully ({word_count} words extracted)")
+                        
+                        # Show preview of extracted text
+                        with st.expander("📄 Preview extracted text"):
+                            st.text_area("Extracted content:", resume_text[:500] + "..." if len(resume_text) > 500 else resume_text, height=150, disabled=True)
+                    else:
+                        st.error(f"❌ Could not extract sufficient text from {resume_file.name}. Error: {resume_text}")
+                        st.info("💡 Try: Ensuring the PDF contains selectable text (not scanned images), converting to DOCX format, or checking file integrity.")
+                        
+                except Exception as e:
+                    st.error(f"❌ Error processing {resume_file.name}: {str(e)}")
+                    st.info("💡 Please try a different file or format.")
     
     with col2:
         st.subheader("📋 Job Description")
@@ -732,7 +1072,7 @@ def show_rewrite():
             
             # Download
             st.subheader("📥 Download")
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3 = st.columns(3)
             
             with col1:
                 st.download_button(
@@ -777,17 +1117,9 @@ def show_rewrite():
                     use_container_width=True
                 )
             
-            with col3:
-                pdf_data = create_pdf(edited_resume, "Professional Resume")
-                st.download_button(
-                    "📄 PDF",
-                    pdf_data,
-                    "optimized_resume.pdf",
-                    "application/pdf",
-                    use_container_width=True
-                )
+
             
-            with col4:
+            with col3:
                 docx_data = create_docx(edited_resume, "Professional Resume")
                 st.download_button(
                     "📄 DOCX",
@@ -833,7 +1165,7 @@ def show_cover_letters():
                 edited_letter = st.text_area("Edit cover letter:", cover_letter, height=400)
                 
                 # Download
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     st.download_button(
@@ -854,17 +1186,9 @@ def show_cover_letters():
                         use_container_width=True
                     )
                 
-                with col3:
-                    pdf_data = create_pdf(edited_letter, f"{template_type} Cover Letter")
-                    st.download_button(
-                        "📄 PDF",
-                        pdf_data,
-                        f"cover_letter_{template_type.lower()}.pdf",
-                        "application/pdf",
-                        use_container_width=True
-                    )
+
                 
-                with col4:
+                with col3:
                     docx_data = create_docx(edited_letter, f"{template_type} Cover Letter")
                     st.download_button(
                         "📄 DOCX",
@@ -907,7 +1231,7 @@ def show_interview_prep():
                 st.markdown(questions)
                 
                 # Download
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     st.download_button(
@@ -928,17 +1252,9 @@ def show_interview_prep():
                         use_container_width=True
                     )
                 
-                with col3:
-                    pdf_data = create_pdf(questions, "Interview Preparation")
-                    st.download_button(
-                        "📄 PDF",
-                        pdf_data,
-                        "interview_questions.pdf",
-                        "application/pdf",
-                        use_container_width=True
-                    )
+
                 
-                with col4:
+                with col3:
                     docx_data = create_docx(questions, "Interview Preparation")
                     st.download_button(
                         "📄 DOCX",
@@ -1128,24 +1444,48 @@ def show_analytics_dashboard():
             # Enhanced metrics with cards
             st.subheader("📈 Performance Overview")
             
-            col1, col2, col3, col4 = st.columns(4)
-            
             total_analyses = len(sessions)
             avg_match = sum(s[4] for s in sessions) / len(sessions)
             avg_ats = sum(s[5] for s in sessions) / len(sessions)
             best_score = max(s[4] for s in sessions)
             
+            # Create styled metric cards
+            col1, col2, col3, col4 = st.columns(4)
+            
             with col1:
-                st.metric("📆 Total Analyses", total_analyses)
+                st.markdown(f'''
+                <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 1.5rem; border-radius: 10px; margin: 0.5rem 0;">
+                    <h3 style="margin: 0; font-size: 2rem;">{total_analyses}</h3>
+                    <p style="margin: 0; opacity: 0.9;">📆 Total Analyses</p>
+                </div>
+                ''', unsafe_allow_html=True)
             
             with col2:
-                st.metric("🎯 Avg Match Score", f"{avg_match:.1f}%")
+                match_color = "#e74c3c" if avg_match < 50 else "#f39c12" if avg_match < 70 else "#27ae60"
+                st.markdown(f'''
+                <div class="metric-card" style="background: {match_color}; color: white; text-align: center; padding: 1.5rem; border-radius: 10px; margin: 0.5rem 0;">
+                    <h3 style="margin: 0; font-size: 2rem;">{avg_match:.1f}%</h3>
+                    <p style="margin: 0; opacity: 0.9;">🎯 Avg Match Score</p>
+                </div>
+                ''', unsafe_allow_html=True)
             
             with col3:
-                st.metric("📈 Avg ATS Score", f"{avg_ats:.1f}%")
+                ats_color = "#e74c3c" if avg_ats < 50 else "#f39c12" if avg_ats < 70 else "#27ae60"
+                st.markdown(f'''
+                <div class="metric-card" style="background: {ats_color}; color: white; text-align: center; padding: 1.5rem; border-radius: 10px; margin: 0.5rem 0;">
+                    <h3 style="margin: 0; font-size: 2rem;">{avg_ats:.1f}%</h3>
+                    <p style="margin: 0; opacity: 0.9;">📈 Avg ATS Score</p>
+                </div>
+                ''', unsafe_allow_html=True)
             
             with col4:
-                st.metric("🏆 Best Score", f"{best_score:.1f}%")
+                best_color = "#8e44ad" if best_score >= 80 else "#3498db" if best_score >= 60 else "#95a5a6"
+                st.markdown(f'''
+                <div class="metric-card" style="background: {best_color}; color: white; text-align: center; padding: 1.5rem; border-radius: 10px; margin: 0.5rem 0;">
+                    <h3 style="margin: 0; font-size: 2rem;">{best_score:.1f}%</h3>
+                    <p style="margin: 0; opacity: 0.9;">🏆 Best Score</p>
+                </div>
+                ''', unsafe_allow_html=True)
             
             # Progress chart
             if len(sessions) > 1:
@@ -1165,51 +1505,162 @@ def show_analytics_dashboard():
                 
                 st.line_chart(chart_data, x='Date')
             
-            # Skill gap heatmap
-            st.subheader("🔥 Skill Gap Analysis")
+            # Enhanced Skill Gap Analysis
+            st.subheader("🔥 Advanced Skill Gap Analysis")
+            st.write("*Comprehensive analysis of 50+ skills across 6 categories*")
             
             if len(sessions) >= 1:
-                latest_session = sessions[0]
-                resume_text = latest_session[2]
-                jd_text = latest_session[3]
+                # Use current session data if available, otherwise use latest from database
+                if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
+                    resume_text = st.session_state.resume_text
+                    jd_text = st.session_state.jd_text
+                else:
+                    latest_session = sessions[0]
+                    resume_text = latest_session[2]
+                    jd_text = latest_session[3]
                 
-                # Analyze missing skills
-                jd_words = set(clean_text(jd_text).split())
-                resume_words = set(clean_text(resume_text).split())
-                missing_skills = list(jd_words - resume_words)[:10]
+                # Advanced skill detection with 50+ skills across 6 categories
+                def analyze_skills_comprehensive(resume_text, jd_text):
+                    jd_lower = jd_text.lower()
+                    resume_lower = resume_text.lower()
+                    
+                    # 50+ skills across 6 comprehensive categories
+                    skill_categories = {
+                        'programming_languages': ['python', 'java', 'javascript', 'typescript', 'react', 'angular', 'vue', 'php', 'c#', 'go', 'rust', 'kotlin', 'swift', 'ruby', 'scala'],
+                        'databases_storage': ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'cassandra', 'dynamodb', 'oracle', 'sqlite'],
+                        'cloud_devops': ['aws', 'azure', 'gcp', 'docker', 'kubernetes', 'terraform', 'jenkins', 'ansible', 'prometheus', 'grafana'],
+                        'development_tools': ['git', 'github', 'jira', 'figma', 'postman', 'vscode', 'selenium', 'jest', 'junit', 'cypress'],
+                        'frameworks_libraries': ['django', 'flask', 'spring', 'express', 'laravel', 'rails', 'bootstrap', 'tailwind', 'jquery', 'nodejs'],
+                        'soft_skills_leadership': ['leadership', 'communication', 'teamwork', 'management', 'planning', 'problem solving', 'analytical', 'project management', 'agile', 'scrum']
+                    }
+                    
+                    # Analyze skills by category
+                    analysis_results = {}
+                    total_found = 0
+                    total_missing = 0
+                    
+                    for category, skills in skill_categories.items():
+                        found_skills = []
+                        missing_skills = []
+                        
+                        for skill in skills:
+                            # Enhanced matching with word boundaries
+                            import re
+                            skill_pattern = rf'\b{re.escape(skill)}\b'
+                            
+                            jd_has_skill = bool(re.search(skill_pattern, jd_lower, re.IGNORECASE))
+                            resume_has_skill = bool(re.search(skill_pattern, resume_lower, re.IGNORECASE))
+                            
+                            if jd_has_skill:
+                                if resume_has_skill:
+                                    found_skills.append(skill)
+                                    total_found += 1
+                                else:
+                                    missing_skills.append(skill)
+                                    total_missing += 1
+                        
+                        analysis_results[category] = {
+                            'found': found_skills,
+                            'missing': missing_skills,
+                            'category_name': category.replace('_', ' ').title()
+                        }
+                    
+                    return analysis_results, total_found, total_missing
                 
-                if missing_skills:
-                    col1, col2 = st.columns(2)
+                skill_analysis, total_found, total_missing = analyze_skills_comprehensive(resume_text, jd_text)
+                
+
+                
+                # Calculate comprehensive metrics
+                total_required = total_found + total_missing
+                skill_match_pct = (total_found / total_required * 100) if total_required > 0 else 0
+                
+                # Compact metrics
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">{total_found}</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">✅ Skills Found</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                
+                with col2:
+                    missing_color = "linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)" if total_missing > 5 else "linear-gradient(135deg, #f39c12 0%, #e67e22 100%)" if total_missing > 2 else "linear-gradient(135deg, #27ae60 0%, #229954 100%)"
+                    st.markdown(f'''
+                    <div style="background: {missing_color}; color: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">{total_missing}</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">⚠️ Skills Missing</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                
+                with col3:
+                    match_color = "linear-gradient(135deg, #27ae60 0%, #229954 100%)" if skill_match_pct >= 80 else "linear-gradient(135deg, #f39c12 0%, #e67e22 100%)" if skill_match_pct >= 60 else "linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)"
+                    st.markdown(f'''
+                    <div style="background: {match_color}; color: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">{skill_match_pct:.0f}%</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">📊 Match Rate</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                
+
+                
+                # Compact skills breakdown
+                st.markdown("### 🎯 Skills by Category")
+                
+                for category, data in skill_analysis.items():
+                    if data['found'] or data['missing']:
+                        category_name = data['category_name']
+                        found_count = len(data['found'])
+                        missing_count = len(data['missing'])
+                        total_category = found_count + missing_count
+                        category_pct = (found_count / total_category * 100) if total_category > 0 else 0
+                        
+                        with st.expander(f"{category_name} ({found_count}/{total_category})", expanded=False):
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                if data['found']:
+                                    st.write(f"✅ **Found:** {', '.join(data['found'])}")
+                            
+                            with col2:
+                                if data['missing']:
+                                    st.write(f"❌ **Missing:** {', '.join(data['missing'])}")
+                                else:
+                                    st.write("✅ **All skills present**")
+
+                
+                # Compact recommendations
+                if total_missing > 0:
+                    st.markdown("### 💡 Recommendations")
                     
-                    with col1:
-                        st.write("⚠️ **Missing Keywords:**")
-                        for skill in missing_skills[:5]:
-                            st.write(f"• {skill.title()}")
+                    priority_skills = []
+                    for category, data in skill_analysis.items():
+                        if data['missing']:
+                            top_missing = data['missing'][:2]
+                            if top_missing:
+                                priority_skills.append(f"**{data['category_name']}**: {', '.join(top_missing)}")
                     
-                    with col2:
-                        # Success probability
-                        match_score = latest_session[4]
-                        ats_score = latest_session[5]
-                        
-                        if match_score >= 80 and ats_score >= 80:
-                            probability = 85
-                        elif match_score >= 70 and ats_score >= 70:
-                            probability = 65
-                        elif match_score >= 60 and ats_score >= 60:
-                            probability = 45
-                        else:
-                            probability = 25
-                        
-                        st.metric("🎯 Interview Probability", f"{probability}%")
-                        
-                        if probability >= 70:
-                            st.success("🎉 High chance of success!")
-                        elif probability >= 50:
-                            st.warning("📈 Good potential, needs improvement")
-                        else:
-                            st.error("📉 Significant improvements needed")
+                    for skill_rec in priority_skills[:3]:
+                        st.write(f"🔹 {skill_rec}")
+                    
+                    if skill_match_pct >= 80:
+                        st.success("🎉 **Excellent match!** Focus on showcasing your expertise.")
+                    elif skill_match_pct >= 60:
+                        st.warning("📈 **Good foundation** - Address key skill gaps above.")
+                    else:
+                        st.error("📉 **Significant gaps** - Consider upskilling or entry-level roles.")
+                else:
+                    st.success("🎆 **Perfect alignment!** Focus on demonstrating expertise with examples.")
+            else:
+                st.info("📈 **Complete a resume analysis first to see detailed skill gap analysis**")
+
+            
+
             
             # Job matching simulation
+            st.markdown("---")
             st.subheader("🔍 Smart Job Matching")
             
             job_search = st.text_input("🔍 Search job titles or companies:", placeholder="e.g., Software Engineer, Google")
