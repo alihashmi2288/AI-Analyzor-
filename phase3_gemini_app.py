@@ -338,7 +338,7 @@ def show_auth_page():
     
     with col2:
         st.markdown("### Welcome to ResumeAI Pro (FREE)")
-        st.info("🆓 Powered by Google Gemini - Completely FREE to use!")
+        st.info("🆓 Completely FREE to use!")
         
         tab1, tab2 = st.tabs(["Sign In", "Sign Up"])
         
@@ -391,7 +391,7 @@ def show_main_app():
         
         st.header("⚙️ Settings")
         st.success("✅ AI Features Ready!")
-        st.info("🆓 FREE Gemini AI is built-in - no API key needed!")
+        st.info("🆓 FREE built in API key - no API key needed!")
         
         st.markdown("---")
         st.markdown("### 🎯 Why AI Resume Analyzer?")
@@ -508,7 +508,7 @@ def show_resume_rewrite_tab():
     st.header("📄 AI Resume Rewrite (FREE)")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
-        st.info("🤖 Gemini AI will rewrite your resume for FREE!")
+        st.info("🤖 Rewrite your resume for free!")
         
         if st.button("✨ Rewrite My Resume", type="primary"):
             with st.spinner("🤖 Gemini AI is rewriting your resume..."):
@@ -542,9 +542,9 @@ def show_cover_letter_tab():
             template_type = st.selectbox("Cover Letter Style", ["Formal", "Modern", "Creative", "Short"])
         
         with col2:
-            st.markdown("**✨ FREE Gemini AI Generation**")
-            st.success("🆓 Unlimited cover letters")
-            st.success("🚀 High quality output")
+            st.markdown("**✨ AI-Powered Generation**")
+            st.success("🆓 Professional templates")
+            st.success("🚀 Instant results")
         
         if st.button("✨ Generate Cover Letter", type="primary"):
             with st.spinner(f"🤖 Creating {template_type.lower()} cover letter..."):
@@ -572,7 +572,7 @@ def show_interview_prep_tab():
     st.header("❓ AI Interview Preparation (FREE)")
     
     if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
-        st.info("🎯 Get personalized interview questions with FREE Gemini AI")
+        st.info("🎯 Get personalized interview questions for Free")
         
         if st.button("🎤 Generate Interview Questions", type="primary"):
             with st.spinner("🤖 Preparing your interview questions..."):
