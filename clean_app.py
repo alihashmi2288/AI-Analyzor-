@@ -186,7 +186,7 @@ def create_user(username, email, password):
     try:
         hashed_pw = hash_password(password)
         cursor.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-                      (username, email, hashed_pw))
+                      (username, email or None, hashed_pw))
         conn.commit()
         conn.close()
         return True
@@ -798,7 +798,6 @@ def show_auth_page():
         with tab2:
             with st.form("signup_form"):
                 new_username = st.text_input("Choose Username")
-                new_email = st.text_input("Email")
                 new_password = st.text_input("Password", type="password")
                 confirm_password = st.text_input("Confirm Password", type="password")
                 
@@ -807,10 +806,10 @@ def show_auth_page():
                         st.error("Passwords don't match")
                     elif len(new_password) < 6:
                         st.error("Password must be at least 6 characters")
-                    elif create_user(new_username, new_email, new_password):
+                    elif create_user(new_username, "", new_password):
                         st.success("Account created! Please sign in.")
                     else:
-                        st.error("Username or email already exists")
+                        st.error("Username already exists")
 
 def show_main_app():
     # Sidebar
