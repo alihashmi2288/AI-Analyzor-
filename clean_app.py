@@ -652,7 +652,7 @@ def get_gemini_api_key():
     try:
         return st.secrets["GEMINI_API_KEY"]
     except:
-        return "AIzaSyAzj6APgLBko1DdYxrhBtaH6GtupTD6Yw8"
+        return "AIzaSyCd-ay8KNBEkjWluWFwOzWddvZftS5CXtc"
 
 def generate_with_gemini(prompt, max_tokens=1000):
     genai, _ = load_ai_libraries()
