@@ -1303,14 +1303,58 @@ def show_history():
 def show_ai_tools():
     st.header("🤖 Enhanced AI Career Tools")
     
+    # Display available tools in a nice layout
+    st.markdown("### 🎯 Available AI Tools")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 0.5rem 0; color: #333;">
+            <strong>💰 Salary Negotiation Guide</strong><br>
+            <small style="color: #666;">Personalized negotiation strategy with market data</small>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 0.5rem 0; color: #333;">
+            <strong>💼 LinkedIn Optimization</strong><br>
+            <small style="color: #666;">Profile enhancement with SEO tips</small>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 0.5rem 0; color: #333;">
+            <strong>🎯 Interview Answer Generator</strong><br>
+            <small style="color: #666;">Personalized STAR method answers</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 0.5rem 0; color: #333;">
+            <strong>🏢 Company Research Report</strong><br>
+            <small style="color: #666;">Comprehensive company analysis for interviews</small>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 0.5rem 0; color: #333;">
+            <strong>📧 Professional Email Generator</strong><br>
+            <small style="color: #666;">Professional communication templates</small>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 0.5rem 0; color: #333;">
+            <strong>🔄 Career Transition Planner</strong><br>
+            <small style="color: #666;">Strategic career change guidance</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.divider()
+    
     ai_feature = st.selectbox(
-        "Choose AI Tool:",
+        "🚀 Select a tool to get started:",
         [
             "💰 Salary Negotiation Guide",
             "🏢 Company Research Report", 
             "💼 LinkedIn Optimization",
-            "📧 Follow-up Email Templates",
-            "🔄 Career Transition Plan"
+            "📧 Professional Email Generator",
+            "🎯 Interview Answer Generator",
+            "🔄 Career Transition Planner"
         ]
     )
     
@@ -1427,14 +1471,164 @@ def show_ai_tools():
             else:
                 st.error("Please analyze a resume first and enter target role")
     
+    elif "📧 Professional Email" in ai_feature:
+        st.subheader("📧 Professional Email Generator")
+        col1, col2 = st.columns(2)
+        with col1:
+            email_type = st.selectbox("Email Type:", [
+                "Thank You After Interview",
+                "Follow-up Email", 
+                "Networking Outreach",
+                "Job Application",
+                "Rejection Response"
+            ])
+        with col2:
+            recipient_name = st.text_input("Recipient Name:", placeholder="e.g., John Smith")
+        
+        company_name = st.text_input("Company Name:", placeholder="e.g., TechCorp")
+        additional_context = st.text_area("Additional Context:", placeholder="Any specific details to include...")
+        
+        if st.button("✨ Generate Email", type="primary"):
+            with st.spinner("🤖 Creating professional email..."):
+                prompt = f"""
+                Create a professional {email_type.lower()} email:
+                
+                Recipient: {recipient_name}
+                Company: {company_name}
+                Context: {additional_context}
+                
+                Requirements:
+                1. Professional tone
+                2. Appropriate subject line
+                3. Clear and concise
+                4. Action-oriented closing
+                5. Under 200 words
+                
+                Format: Subject line followed by email body
+                """
+                
+                email_content = generate_with_gemini(prompt, max_tokens=800)
+                st.markdown(email_content)
+                st.download_button(
+                    "📥 Download Email",
+                    email_content,
+                    f"{email_type.lower().replace(' ', '_')}_email.txt",
+                    "text/plain"
+                )
+    
+    elif "🎯 Interview Answers" in ai_feature:
+        st.subheader("🎯 Interview Answer Generator")
+        
+        if hasattr(st.session_state, 'resume_text') and hasattr(st.session_state, 'jd_text'):
+            question_type = st.selectbox("Question Type:", [
+                "Tell me about yourself",
+                "Why do you want this job?",
+                "What's your greatest strength?",
+                "What's your biggest weakness?",
+                "Describe a challenge you overcame",
+                "Where do you see yourself in 5 years?",
+                "Why are you leaving your current job?",
+                "Custom Question"
+            ])
+            
+            if question_type == "Custom Question":
+                custom_question = st.text_input("Enter your question:", placeholder="e.g., How do you handle conflict?")
+                question_to_use = custom_question
+            else:
+                question_to_use = question_type
+            
+            if st.button("✨ Generate Answer", type="primary"):
+                if question_to_use:
+                    with st.spinner("🤖 Creating personalized answer..."):
+                        prompt = f"""
+                        Create a personalized interview answer for:
+                        
+                        Question: {question_to_use}
+                        Resume: {st.session_state.resume_text[:1500]}
+                        Job Description: {st.session_state.jd_text[:1000]}
+                        
+                        Provide:
+                        1. STAR method structure (if applicable)
+                        2. Specific examples from the resume
+                        3. Connection to the target role
+                        4. Key points to emphasize
+                        5. Confident closing statement
+                        
+                        Keep answer 60-90 seconds when spoken.
+                        """
+                        
+                        answer = generate_with_gemini(prompt, max_tokens=1000)
+                        st.markdown(answer)
+                        st.download_button(
+                            "📥 Download Answer",
+                            answer,
+                            "interview_answer.txt",
+                            "text/plain"
+                        )
+                else:
+                    st.error("Please enter a question")
+        else:
+            st.error("Please analyze a resume first")
+    
+    elif "🔄 Career Transition" in ai_feature:
+        st.subheader("🔄 Career Transition Planner")
+        
+        if hasattr(st.session_state, 'resume_text'):
+            col1, col2 = st.columns(2)
+            with col1:
+                current_role = st.text_input("Current Role:", placeholder="e.g., Marketing Manager")
+                target_role = st.text_input("Target Role:", placeholder="e.g., Product Manager")
+            with col2:
+                timeline = st.selectbox("Timeline:", ["3 months", "6 months", "1 year", "2+ years"])
+                experience_level = st.selectbox("Experience Level:", ["Entry Level", "Mid Level", "Senior Level", "Executive"])
+            
+            if st.button("✨ Create Transition Plan", type="primary"):
+                if current_role and target_role:
+                    with st.spinner("🤖 Creating transition plan..."):
+                        prompt = f"""
+                        Create a comprehensive career transition plan:
+                        
+                        Current Role: {current_role}
+                        Target Role: {target_role}
+                        Timeline: {timeline}
+                        Experience Level: {experience_level}
+                        Current Resume: {st.session_state.resume_text[:1500]}
+                        
+                        Provide:
+                        1. Skill Gap Analysis (what's missing)
+                        2. Learning Path (courses, certifications)
+                        3. Experience Building (projects, volunteering)
+                        4. Networking Strategy
+                        5. Timeline Milestones
+                        6. Resume Positioning Tips
+                        7. Interview Preparation Focus
+                        8. Potential Challenges & Solutions
+                        
+                        Make it actionable and specific to the {timeline} timeline.
+                        """
+                        
+                        plan = generate_with_gemini(prompt, max_tokens=2000)
+                        st.markdown(plan)
+                        st.download_button(
+                            "📥 Download Plan",
+                            plan,
+                            "career_transition_plan.txt",
+                            "text/plain"
+                        )
+                else:
+                    st.error("Please enter current and target roles")
+        else:
+            st.error("Please analyze a resume first")
+    
     else:
         st.info("🚀 Select an AI tool above to get started!")
         st.markdown("**Available Tools:**")
         st.write("• 💰 Salary Negotiation Guide - Personalized negotiation strategy")
         st.write("• 🏢 Company Research Report - Comprehensive company analysis")
         st.write("• 💼 LinkedIn Optimization - Profile enhancement tips")
-        st.write("• 📧 Follow-up Email Templates - Professional communication")
-        st.write("• 🔄 Career Transition Plan - Strategic career change guidance")
+        st.write("• 📧 Professional Email Generator - Professional communication templates")
+        st.write("• 🎯 Interview Answer Generator - Personalized STAR method answers")
+        st.write("• 🔄 Career Transition Planner - Strategic career change guidance")
 
 def show_analytics_dashboard():
     st.header("📈 Advanced Analytics Dashboard")
