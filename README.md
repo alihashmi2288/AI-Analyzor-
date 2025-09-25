@@ -50,12 +50,14 @@ Core Intelligence Engine:
 
 ```
 QWS AI RESUME ANALYZER/
-├── clean_app.py              # Main application (comprehensive single file)
-├── requirements.txt           # All dependencies
+├── clean_app.py              # Main application
+├── requirements.txt          # Dependencies
 ├── README.md                 # Complete documentation
 ├── SETUP.md                  # Quick setup guide
 ├── linkedinpost.md           # Social media content
-├── run_clean_app.bat         # Windows launcher
+├── run_clean_app.bat         # Application launcher
+├── .streamlit/               # Streamlit configuration
+│   └── secrets.toml          # API keys (optional)
 └── resumeai.db              # SQLite database (auto-created)
 ```
 
@@ -75,15 +77,16 @@ pip install -r requirements.txt
 ### 2. Run Application
 
 ```bash
-# Windows (Recommended)
-.\run_clean_app.bat
+# Run application
+.\run_clean_app.bat  
+# Access at: http://localhost:8501
 
 # Manual execution
 streamlit run clean_app.py
 ```
 
 ### 3. Access Application
-- **URL**: http://localhost:8501
+- **Application URL**: http://localhost:8501
 - **Sign Up**: Create secure account
 - **Upload**: PDF or DOCX resume
 - **Analyze**: Get instant AI-powered insights
@@ -262,7 +265,7 @@ streamlit run clean_app.py
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/enhancement`)
-3. Make changes to `clean_app.py`
+3. Modify `clean_app.py`
 4. Test thoroughly with multiple resume formats
 5. Submit pull request with detailed description
 

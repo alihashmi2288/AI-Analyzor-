@@ -288,7 +288,9 @@ def extract_text_from_pdf(uploaded_file):
                         continue
                 if fallback_text.strip():
                     text = fallback_text
-            except:
+            except ImportError:
+                pass
+            except Exception:
                 pass
         
         # Final fallback to pymupdf if available
@@ -567,9 +569,9 @@ def calculate_ats_score(resume_text, jd_text):
         
         # 4. Technical skills with exact matching (17% weight)
         tech_skills_expanded = {
-            'programming': ['python', 'java', 'javascript', 'typescript', 'c\+\+', 'c#', 'php', 'ruby', 'go', 'rust', 'scala', 'kotlin'],
-            'web_frontend': ['html5?', 'css3?', 'react', 'angular', 'vue\.js', 'svelte', 'bootstrap', 'tailwind'],
-            'web_backend': ['node\.js', 'express', 'django', 'flask', 'spring', 'laravel', 'rails'],
+            'programming': ['python', 'java', 'javascript', 'typescript', 'c\\+\\+', 'c#', 'php', 'ruby', 'go', 'rust', 'scala', 'kotlin'],
+            'web_frontend': ['html5?', 'css3?', 'react', 'angular', 'vue\\.js', 'svelte', 'bootstrap', 'tailwind'],
+            'web_backend': ['node\\.js', 'express', 'django', 'flask', 'spring', 'laravel', 'rails'],
             'databases': ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'cassandra', 'dynamodb'],
             'cloud_aws': ['aws', 'ec2', 's3', 'lambda', 'rds', 'cloudformation', 'ecs', 'eks'],
             'cloud_other': ['azure', 'gcp', 'google cloud', 'digital ocean', 'heroku'],
