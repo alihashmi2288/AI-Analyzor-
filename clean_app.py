@@ -649,22 +649,18 @@ def calculate_ats_score(resume_text, jd_text):
 
 # Gemini AI
 def get_gemini_api_key():
-    try:
-        return st.secrets["GEMINI_API_KEY"]
-    except:
-        return "AIzaSyCd-ay8KNBEkjWluWFwOzWddvZftS5CXtc"
+    return st.secrets["GEMINI_API_KEY"]
 
 def generate_with_gemini(prompt, max_tokens=1000):
-    genai, _ = load_ai_libraries()
-    api_key = get_gemini_api_key()
+    import google.generativeai as genai
     
-    try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        return f"Error: {str(e)}"
+    api_key = get_gemini_api_key()
+    genai.configure(api_key=api_key)
+    
+    model = genai.GenerativeModel('models/gemini-2.0-flash')
+    response = model.generate_content(prompt)
+    
+    return response.text.strip()
 
 @st.cache_data
 def create_score_gauge(score, title):
